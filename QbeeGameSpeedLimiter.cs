@@ -146,7 +146,7 @@ namespace QbeeGameSpeedLimiter
 
     public class QbeeClient
     {
-        private readonly string baseUrl;
+        private string baseUrl;
         private readonly string username;
         private readonly string password;
         private readonly CookieContainer cookies = new CookieContainer();
@@ -202,6 +202,11 @@ namespace QbeeGameSpeedLimiter
                 var content = Request("GET", "/", null);
                 if (content.IndexOf("CEF remote debugging", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
+                    if (TrySwitchToIpv6Loopback())
+                    {
+                        return;
+                    }
+
                     throw new InvalidOperationException(
                         "当前地址打开的是 CEF remote debugging，不是 qBittorrent Web UI。Steam 的 CEF 可能占用了 127.0.0.1:8080。请尝试填写 http://[::1]:8080，或在 qbee 设置里换一个 Web UI 端口。");
                 }
@@ -213,6 +218,40 @@ namespace QbeeGameSpeedLimiter
                 {
                     throw;
                 }
+            }
+        }
+
+        private bool TrySwitchToIpv6Loopback()
+        {
+            Uri uri;
+            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out uri))
+            {
+                return false;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            if (host != "localhost" && host != "127.0.0.1")
+            {
+                return false;
+            }
+
+            var builder = new UriBuilder(uri)
+            {
+                Host = "::1"
+            };
+            var candidate = builder.Uri.ToString().TrimEnd('/');
+            var original = baseUrl;
+
+            try
+            {
+                baseUrl = candidate;
+                Request("GET", "/api/v2/app/version", null);
+                return true;
+            }
+            catch
+            {
+                baseUrl = original;
+                return false;
             }
         }
 
