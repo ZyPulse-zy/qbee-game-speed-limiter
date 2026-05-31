@@ -174,6 +174,13 @@ namespace QbeeGameSpeedLimiter
         private void EnsureLogin()
         {
             if (loggedIn) return;
+            ValidateServer();
+
+            if (CanUseWithoutLogin())
+            {
+                loggedIn = true;
+                return;
+            }
 
             var body = "username=" + Uri.EscapeDataString(username) +
                        "&password=" + Uri.EscapeDataString(password);
@@ -183,6 +190,46 @@ namespace QbeeGameSpeedLimiter
                 throw new InvalidOperationException("qbee 登录失败，请检查 Web UI 用户名和密码。");
             }
             loggedIn = true;
+        }
+
+        private void ValidateServer()
+        {
+            try
+            {
+                var content = Request("GET", "/", null);
+                if (content.IndexOf("CEF remote debugging", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    throw new InvalidOperationException(
+                        "当前地址打开的是 CEF remote debugging，不是 qBittorrent Web UI。请在 qbee 设置里查看真正的 Web UI 端口，或把 Web UI 端口改成 8081 后再试。");
+                }
+            }
+            catch (WebException error)
+            {
+                var response = error.Response as HttpWebResponse;
+                if (response == null)
+                {
+                    throw;
+                }
+            }
+        }
+
+        private bool CanUseWithoutLogin()
+        {
+            try
+            {
+                Request("GET", "/api/v2/app/version", null);
+                return true;
+            }
+            catch (WebException error)
+            {
+                var response = error.Response as HttpWebResponse;
+                if (response != null && response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new InvalidOperationException(
+                        "当前地址没有 qBittorrent Web API。请确认填的是 qbee Web UI 地址，例如 http://127.0.0.1:8081。");
+                }
+                return false;
+            }
         }
 
         private string Request(string method, string path, string body)
