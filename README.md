@@ -34,7 +34,7 @@ The included config is set to:
 
 ```json
 {
-  "qbee_url": "http://127.0.0.1:8081",
+  "qbee_url": "http://[::1]:8080",
   "username": "admin",
   "password": "adminadmin",
   "game_folders": [
@@ -68,6 +68,6 @@ The main desktop app is implemented with .NET Framework WinForms in `QbeeGameSpe
 
 - qBittorrent must be running.
 - Web UI credentials must be correct.
-- If `http://127.0.0.1:8080` opens `CEF remote debugging`, that port is not qBittorrent Web UI. Change qBittorrent Web UI to another port such as `8081`, then set the app URL to `http://127.0.0.1:8081`.
+- If `http://127.0.0.1:8080` opens `CEF remote debugging`, Steam's CEF helper may be occupying the IPv4 loopback address. Try `http://[::1]:8080` first. If that still fails, change qBittorrent Web UI to another port such as `8081`, then set the app URL to `http://127.0.0.1:8081`.
 - The executable does not bundle your config. Keep the JSON file beside the EXE.
 - Passwords are stored in the local JSON config file as plain text.

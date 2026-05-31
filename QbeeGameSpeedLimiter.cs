@@ -29,7 +29,7 @@ namespace QbeeGameSpeedLimiter
         {
             return new AppConfig
             {
-                qbee_url = "http://127.0.0.1:8080",
+                qbee_url = "http://[::1]:8080",
                 username = "admin",
                 password = "adminadmin",
                 game_folders = new List<string>
@@ -200,7 +200,7 @@ namespace QbeeGameSpeedLimiter
                 if (content.IndexOf("CEF remote debugging", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     throw new InvalidOperationException(
-                        "当前地址打开的是 CEF remote debugging，不是 qBittorrent Web UI。请在 qbee 设置里查看真正的 Web UI 端口，或把 Web UI 端口改成 8081 后再试。");
+                        "当前地址打开的是 CEF remote debugging，不是 qBittorrent Web UI。Steam 的 CEF 可能占用了 127.0.0.1:8080。请尝试填写 http://[::1]:8080，或在 qbee 设置里换一个 Web UI 端口。");
                 }
             }
             catch (WebException error)
@@ -226,7 +226,7 @@ namespace QbeeGameSpeedLimiter
                 if (response != null && response.StatusCode == HttpStatusCode.NotFound)
                 {
                     throw new InvalidOperationException(
-                        "当前地址没有 qBittorrent Web API。请确认填的是 qbee Web UI 地址，例如 http://127.0.0.1:8081。");
+                        "当前地址没有 qBittorrent Web API。请确认填的是 qbee Web UI 地址，例如 http://[::1]:8080 或 http://127.0.0.1:8081。");
                 }
                 return false;
             }
