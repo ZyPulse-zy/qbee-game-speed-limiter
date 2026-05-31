@@ -87,7 +87,7 @@ namespace QbeeGameSpeedLimiter
                     "redistributable",
                     "runtime"
                 },
-                check_interval_seconds = 3,
+                check_interval_seconds = 5,
                 restore_on_exit = true,
                 start_with_windows = false,
                 auto_start_monitor = false,
@@ -354,6 +354,7 @@ namespace QbeeGameSpeedLimiter
     {
         private readonly Action<string> onStatus;
         private readonly Action<string> onDetectedGame;
+        private readonly ManualResetEvent stopSignal = new ManualResetEvent(false);
         private Thread worker;
         private bool stopping;
 
@@ -372,6 +373,7 @@ namespace QbeeGameSpeedLimiter
         {
             if (IsRunning) return;
             stopping = false;
+            stopSignal.Reset();
             worker = new Thread(() => Run(config));
             worker.IsBackground = true;
             worker.Start();
@@ -380,6 +382,7 @@ namespace QbeeGameSpeedLimiter
         public void Stop()
         {
             stopping = true;
+            stopSignal.Set();
             if (worker != null && worker.IsAlive)
             {
                 worker.Join(5000);
@@ -389,8 +392,10 @@ namespace QbeeGameSpeedLimiter
         private void Run(AppConfig config)
         {
             var client = new QbeeClient(config);
+            var detector = new GameProcessDetector(config);
             bool? lastGameState = null;
             var lastDetectedGame = "";
+            var lastPublishedDetectedGame = "";
             var lastStillRunningLog = DateTime.MinValue;
 
             Log(config, "Monitor started.");
@@ -401,9 +406,13 @@ namespace QbeeGameSpeedLimiter
             {
                 while (!stopping)
                 {
-                    var detectedGame = DetectRunningGame(config);
+                    var detectedGame = detector.Detect();
                     var gameRunning = detectedGame != null;
-                    onDetectedGame(detectedGame ?? "");
+                    if ((detectedGame ?? "") != lastPublishedDetectedGame)
+                    {
+                        lastPublishedDetectedGame = detectedGame ?? "";
+                        onDetectedGame(lastPublishedDetectedGame);
+                    }
 
                     if (lastGameState == null || gameRunning != lastGameState.Value)
                     {
@@ -438,7 +447,7 @@ namespace QbeeGameSpeedLimiter
                         lastStillRunningLog = DateTime.Now;
                     }
 
-                    Thread.Sleep(Math.Max(1, config.check_interval_seconds) * 1000);
+                    stopSignal.WaitOne(Math.Max(1, config.check_interval_seconds) * 1000);
                 }
             }
             catch (Exception error)
@@ -464,32 +473,137 @@ namespace QbeeGameSpeedLimiter
             }
         }
 
-        private static string DetectRunningGame(AppConfig config)
+        private class GameProcessDetector
         {
-            var folders = BuildDetectionFolders(config);
-            var processNames = new HashSet<string>(
-                (config.game_processes ?? new List<string>()).Select(item => item.ToLowerInvariant()));
-            var excluded = new HashSet<string>(
-                (config.exclude_processes ?? new List<string>()).Select(item => item.ToLowerInvariant()));
-            var excludedPathKeywords = (config.exclude_path_keywords ?? new List<string>())
-                .Where(item => !string.IsNullOrWhiteSpace(item))
-                .Select(item => item.ToLowerInvariant())
-                .ToList();
+            private readonly List<string> folders;
+            private readonly HashSet<string> processNames;
+            private readonly HashSet<string> excluded;
+            private readonly List<string> excludedPathKeywords;
+            private readonly Dictionary<int, string> pathCache = new Dictionary<int, string>();
+            private readonly Dictionary<int, string> nameCache = new Dictionary<int, string>();
 
-            using (var searcher = new ManagementObjectSearcher("SELECT Name, ExecutablePath FROM Win32_Process"))
+            public GameProcessDetector(AppConfig config)
             {
-                foreach (ManagementObject process in searcher.Get())
-                {
-                    var name = Convert.ToString(process["Name"] ?? "").ToLowerInvariant();
-                    var path = Convert.ToString(process["ExecutablePath"] ?? "");
-                    if (string.IsNullOrWhiteSpace(name) || excluded.Contains(name)) continue;
-                    if (processNames.Contains(name)) return name;
-                    if (string.IsNullOrWhiteSpace(path)) continue;
+                folders = BuildDetectionFolders(config);
+                processNames = new HashSet<string>(
+                    (config.game_processes ?? new List<string>())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item.ToLowerInvariant()));
+                excluded = new HashSet<string>(
+                    (config.exclude_processes ?? new List<string>())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item.ToLowerInvariant()));
+                excludedPathKeywords = (config.exclude_path_keywords ?? new List<string>())
+                    .Where(item => !string.IsNullOrWhiteSpace(item))
+                    .Select(item => item.ToLowerInvariant())
+                    .ToList();
+            }
 
-                    var normalizedPath = NormalizePath(path);
-                    if (excludedPathKeywords.Any(keyword => normalizedPath.Contains(keyword))) continue;
-                    if (folders.Any(folder => IsUnderFolder(path, folder))) return path;
+            public string Detect()
+            {
+                Process[] processes;
+                try
+                {
+                    processes = Process.GetProcesses();
                 }
+                catch
+                {
+                    return null;
+                }
+
+                var liveIds = new HashSet<int>();
+
+                foreach (var process in processes)
+                {
+                    using (process)
+                    {
+                        string name;
+                        try
+                        {
+                            liveIds.Add(process.Id);
+                            name = (process.ProcessName ?? "").ToLowerInvariant();
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(name)) continue;
+                        var exeName = name.EndsWith(".exe") ? name : name + ".exe";
+                        if (excluded.Contains(exeName) || excluded.Contains(name)) continue;
+                        if (processNames.Contains(exeName) || processNames.Contains(name)) return exeName;
+
+                        var path = GetExecutablePath(process, exeName);
+                        if (string.IsNullOrWhiteSpace(path)) continue;
+
+                        var normalizedPath = NormalizePath(path);
+                        if (excludedPathKeywords.Any(keyword => normalizedPath.Contains(keyword))) continue;
+                        if (folders.Any(folder => IsUnderFolder(path, folder))) return path;
+                    }
+                }
+
+                RemoveDeadCacheEntries(liveIds);
+                return null;
+            }
+
+            private string GetExecutablePath(Process process, string exeName)
+            {
+                string cached;
+                string cachedName;
+                if (pathCache.TryGetValue(process.Id, out cached) &&
+                    nameCache.TryGetValue(process.Id, out cachedName) &&
+                    cachedName == exeName)
+                {
+                    return cached;
+                }
+
+                var path = "";
+                try
+                {
+                    if (process.MainModule != null)
+                    {
+                        path = process.MainModule.FileName;
+                    }
+                }
+                catch
+                {
+                    path = GetExecutablePathByWmi(process.Id);
+                }
+
+                pathCache[process.Id] = path ?? "";
+                nameCache[process.Id] = exeName;
+                return path;
+            }
+
+            private void RemoveDeadCacheEntries(HashSet<int> liveIds)
+            {
+                if (pathCache.Count < 256) return;
+
+                foreach (var id in pathCache.Keys.ToList())
+                {
+                    if (!liveIds.Contains(id))
+                    {
+                        pathCache.Remove(id);
+                        nameCache.Remove(id);
+                    }
+                }
+            }
+        }
+
+        private static string GetExecutablePathByWmi(int processId)
+        {
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher("SELECT ExecutablePath FROM Win32_Process WHERE ProcessId = " + processId))
+                {
+                    foreach (ManagementObject process in searcher.Get())
+                    {
+                        return Convert.ToString(process["ExecutablePath"] ?? "");
+                    }
+                }
+            }
+            catch
+            {
             }
 
             return null;
@@ -716,10 +830,11 @@ namespace QbeeGameSpeedLimiter
             config = ConfigStore.Load();
             monitor = new GameMonitor(SetStatusSafe, SetDetectedGameSafe);
             Text = "qbee Game Speed Limiter";
-            MinimumSize = new Size(760, 560);
-            Size = new Size(820, 640);
+            MinimumSize = new Size(860, 620);
+            Size = new Size(920, 680);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Microsoft YaHei UI", 9F);
+            BackColor = Color.FromArgb(244, 247, 251);
 
             BuildUi();
             LoadConfigToUi();
@@ -734,84 +849,154 @@ namespace QbeeGameSpeedLimiter
             var root = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(18),
+                Padding = new Padding(22),
                 ColumnCount = 1,
-                RowCount = 4
+                RowCount = 5
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 198));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 76));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 212));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
             Controls.Add(root);
 
-            var account = new GroupBox { Text = "qbee Web UI", Dock = DockStyle.Fill };
-            root.Controls.Add(account, 0, 0);
+            var header = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = new Padding(0, 0, 0, 12)
+            };
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180));
+            root.Controls.Add(header, 0, 0);
+
+            var titleBlock = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2 };
+            titleBlock.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            titleBlock.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            header.Controls.Add(titleBlock, 0, 0);
+            titleBlock.Controls.Add(new Label
+            {
+                Text = "qbee 游戏限速助手",
+                Dock = DockStyle.Fill,
+                Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(32, 45, 64)
+            }, 0, 0);
+            titleBlock.Controls.Add(new Label
+            {
+                Text = "检测到游戏运行时开启备用速度限制，退出游戏后自动恢复。",
+                Dock = DockStyle.Fill,
+                ForeColor = Color.FromArgb(95, 110, 130)
+            }, 0, 1);
+
+            var statusPill = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(232, 240, 255),
+                Padding = new Padding(14, 10, 14, 10),
+                Margin = new Padding(0, 6, 0, 10)
+            };
+            header.Controls.Add(statusPill, 1, 0);
+            statusLabel.Text = "就绪";
+            statusLabel.Dock = DockStyle.Fill;
+            statusLabel.TextAlign = ContentAlignment.MiddleCenter;
+            statusLabel.ForeColor = Color.FromArgb(33, 86, 178);
+            statusLabel.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            statusPill.Controls.Add(statusLabel);
+
+            var account = CreateCard("连接与启动");
+            root.Controls.Add(account, 0, 1);
 
             var accountLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(12),
-                ColumnCount = 2,
-                RowCount = 5
+                Padding = new Padding(18, 16, 18, 16),
+                ColumnCount = 4,
+                RowCount = 4
             };
-            accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
+            accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
             accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            account.Controls.Add(accountLayout);
+            accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 82));
+            accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            account.Controls.Add(accountLayout, 0, 1);
 
-            AddRow(accountLayout, 0, "地址", urlBox);
-            AddRow(accountLayout, 1, "用户名", usernameBox);
+            StyleTextBox(urlBox);
+            StyleTextBox(usernameBox);
+            StyleTextBox(passwordBox);
+            AddRow(accountLayout, 0, "地址", urlBox, 1, 3);
+            AddRow(accountLayout, 1, "用户名", usernameBox, 1, 1);
             passwordBox.UseSystemPasswordChar = true;
-            AddRow(accountLayout, 2, "密码", passwordBox);
+            AddRow(accountLayout, 1, "密码", passwordBox, 3, 1);
 
-            var options = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+            var options = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0, 10, 0, 0)
+            };
             intervalBox.Minimum = 1;
             intervalBox.Maximum = 60;
-            intervalBox.Width = 64;
-            var testButton = new Button { Text = "测试连接", AutoSize = true };
+            intervalBox.Width = 72;
+            intervalBox.BackColor = Color.White;
+            var testButton = CreateButton("测试连接", false);
             testButton.Click += delegate { TestConnection(); };
-            options.Controls.Add(new Label { Text = "检查间隔", AutoSize = true, Padding = new Padding(0, 6, 0, 0) });
+            options.Controls.Add(MutedLabel("检查间隔"));
             options.Controls.Add(intervalBox);
-            options.Controls.Add(new Label { Text = "秒", AutoSize = true, Padding = new Padding(0, 6, 18, 0) });
+            options.Controls.Add(MutedLabel("秒"));
             options.Controls.Add(testButton);
-            accountLayout.Controls.Add(options, 1, 3);
+            accountLayout.Controls.Add(options, 1, 2);
+            accountLayout.SetColumnSpan(options, 3);
 
-            var startupOptions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+            var startupOptions = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0, 8, 0, 0)
+            };
             startWithWindowsBox.Text = "开机自启动";
             startWithWindowsBox.AutoSize = true;
+            startWithWindowsBox.ForeColor = Color.FromArgb(49, 62, 80);
             autoStartMonitorBox.Text = "启动后自动开始监控";
             autoStartMonitorBox.AutoSize = true;
+            autoStartMonitorBox.ForeColor = Color.FromArgb(49, 62, 80);
             startupOptions.Controls.Add(startWithWindowsBox);
             startupOptions.Controls.Add(autoStartMonitorBox);
-            accountLayout.Controls.Add(startupOptions, 1, 4);
+            accountLayout.Controls.Add(startupOptions, 1, 3);
+            accountLayout.SetColumnSpan(startupOptions, 3);
 
-            var folders = new GroupBox { Text = "游戏库文件夹", Dock = DockStyle.Fill };
-            root.Controls.Add(folders, 0, 1);
+            var folders = CreateCard("游戏库文件夹");
+            root.Controls.Add(folders, 0, 2);
             var folderLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(12),
+                Padding = new Padding(18, 14, 18, 18),
                 ColumnCount = 2,
                 RowCount = 1
             };
             folderLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            folderLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 112));
-            folders.Controls.Add(folderLayout);
+            folderLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124));
+            folders.Controls.Add(folderLayout, 0, 1);
 
             folderList.Dock = DockStyle.Fill;
+            folderList.BorderStyle = BorderStyle.None;
+            folderList.BackColor = Color.FromArgb(248, 250, 253);
+            folderList.ForeColor = Color.FromArgb(38, 52, 72);
+            folderList.Font = new Font("Consolas", 9F);
             folderLayout.Controls.Add(folderList, 0, 0);
 
             var folderButtons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
-                WrapContents = false
+                WrapContents = false,
+                Padding = new Padding(12, 0, 0, 0)
             };
             folderLayout.Controls.Add(folderButtons, 1, 0);
 
-            var scanButton = new Button { Text = "自动扫描", Width = 92 };
-            var addButton = new Button { Text = "添加", Width = 92 };
-            var removeButton = new Button { Text = "删除", Width = 92 };
-            var openButton = new Button { Text = "打开配置", Width = 92 };
+            var scanButton = CreateButton("自动扫描", true);
+            var addButton = CreateButton("添加", false);
+            var removeButton = CreateButton("删除", false);
+            var openButton = CreateButton("打开配置", false);
             scanButton.Click += delegate { ScanFolders(); };
             addButton.Click += delegate { AddFolder(); };
             removeButton.Click += delegate { RemoveFolder(); };
@@ -825,49 +1010,114 @@ namespace QbeeGameSpeedLimiter
             detectedLabel.Dock = DockStyle.Fill;
             detectedLabel.TextAlign = ContentAlignment.MiddleLeft;
             detectedLabel.AutoEllipsis = true;
-            root.Controls.Add(detectedLabel, 0, 2);
+            detectedLabel.ForeColor = Color.FromArgb(83, 98, 118);
+            detectedLabel.Padding = new Padding(4, 0, 0, 0);
+            root.Controls.Add(detectedLabel, 0, 3);
 
             var actions = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 4,
-                RowCount = 1
+                ColumnCount = 3,
+                RowCount = 1,
+                Margin = new Padding(0, 8, 0, 0)
             };
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-            root.Controls.Add(actions, 0, 3);
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 116));
+            root.Controls.Add(actions, 0, 4);
 
-            statusLabel.Text = "就绪";
-            statusLabel.Dock = DockStyle.Fill;
-            statusLabel.TextAlign = ContentAlignment.MiddleLeft;
-            actions.Controls.Add(statusLabel, 0, 0);
-
-            var saveButton = new Button { Text = "保存配置", Dock = DockStyle.Fill };
+            var saveButton = CreateButton("保存配置", false);
+            saveButton.Dock = DockStyle.Left;
+            saveButton.Width = 116;
             saveButton.Click += delegate { SaveFromUi(); };
             startButton.Text = "开始监控";
-            startButton.Dock = DockStyle.Fill;
+            StyleButton(startButton, true);
             startButton.Click += delegate { StartMonitor(); };
             stopButton.Text = "停止监控";
-            stopButton.Dock = DockStyle.Fill;
+            StyleButton(stopButton, false);
             stopButton.Enabled = false;
             stopButton.Click += delegate { StopMonitor(); };
-            actions.Controls.Add(saveButton, 1, 0);
-            actions.Controls.Add(startButton, 2, 0);
-            actions.Controls.Add(stopButton, 3, 0);
+            actions.Controls.Add(saveButton, 0, 0);
+            actions.Controls.Add(startButton, 1, 0);
+            actions.Controls.Add(stopButton, 2, 0);
         }
 
-        private static void AddRow(TableLayoutPanel panel, int row, string label, TextBox box)
+        private static TableLayoutPanel CreateCard(string title)
+        {
+            var card = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                RowCount = 2,
+                ColumnCount = 1,
+                BackColor = Color.White,
+                Margin = new Padding(0, 0, 0, 14)
+            };
+            card.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+            card.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            card.Controls.Add(new Label
+            {
+                Text = title,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(18, 12, 18, 0),
+                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(38, 52, 72)
+            }, 0, 0);
+            return card;
+        }
+
+        private static Label MutedLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                AutoSize = true,
+                ForeColor = Color.FromArgb(83, 98, 118),
+                Padding = new Padding(0, 7, 8, 0)
+            };
+        }
+
+        private static Button CreateButton(string text, bool primary)
+        {
+            var button = new Button { Text = text, Width = 104, Height = 34, Margin = new Padding(0, 0, 0, 10) };
+            StyleButton(button, primary);
+            return button;
+        }
+
+        private static void StyleButton(Button button, bool primary)
+        {
+            button.FlatStyle = FlatStyle.Flat;
+            button.FlatAppearance.BorderSize = 0;
+            button.BackColor = primary ? Color.FromArgb(41, 111, 235) : Color.FromArgb(232, 237, 245);
+            button.ForeColor = primary ? Color.White : Color.FromArgb(38, 52, 72);
+            button.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            button.Height = 34;
+            button.Margin = new Padding(6, 0, 0, 0);
+            button.Cursor = Cursors.Hand;
+        }
+
+        private static void StyleTextBox(TextBox box)
+        {
+            box.BorderStyle = BorderStyle.FixedSingle;
+            box.BackColor = Color.FromArgb(248, 250, 253);
+            box.ForeColor = Color.FromArgb(38, 52, 72);
+            box.Margin = new Padding(0, 4, 12, 4);
+        }
+
+        private static void AddRow(TableLayoutPanel panel, int row, string label, TextBox box, int column, int span)
         {
             panel.Controls.Add(new Label
             {
                 Text = label,
                 Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleLeft
-            }, 0, row);
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = Color.FromArgb(83, 98, 118)
+            }, column - 1, row);
             box.Dock = DockStyle.Fill;
-            panel.Controls.Add(box, 1, row);
+            panel.Controls.Add(box, column, row);
+            if (span > 1)
+            {
+                panel.SetColumnSpan(box, span);
+            }
         }
 
         private void LoadConfigToUi()

@@ -16,6 +16,7 @@
 - 通过 qBittorrent Web UI API 控制备用速度限制。
 - 提供 Windows 桌面配置界面。
 - 支持当前用户开机自启动，并可在启动后自动开始监控。
+- 使用缓存式进程检测，降低后台 CPU 占用。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载
@@ -85,7 +86,7 @@ qbee_game_speed_limiter.json
     "D:\\SteamLibrary\\steamapps"
   ],
   "game_processes": [],
-  "check_interval_seconds": 3,
+  "check_interval_seconds": 5,
   "restore_on_exit": true,
   "start_with_windows": false,
   "auto_start_monitor": false,

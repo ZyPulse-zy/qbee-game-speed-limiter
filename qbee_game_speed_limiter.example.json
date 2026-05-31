@@ -47,7 +47,7 @@
     "redistributable",
     "runtime"
   ],
-  "check_interval_seconds": 3,
+  "check_interval_seconds": 5,
   "restore_on_exit": true,
   "start_with_windows": false,
   "auto_start_monitor": false,

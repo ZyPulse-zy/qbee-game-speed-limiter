@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 *.log
+*.zip
 build/
 dist/
 *.spec
