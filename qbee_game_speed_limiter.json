@@ -1,12 +1,14 @@
-{
-  "qbee_url": "http://[::1]:8080",
-  "username": "admin",
+﻿{
+  "qbee_url": "http://127.0.0.1:8080",
+  "username": "suyuen",
   "password": "",
   "game_folders": [
     "C:\\Program Files (x86)\\Steam\\steamapps",
     "D:\\SteamLibrary\\steamapps"
   ],
-  "game_processes": [],
+  "game_processes": [
+    
+  ],
   "exclude_processes": [
     "steam.exe",
     "epicgameslauncher.exe",

@@ -6,6 +6,7 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 
 - Detects running games by executable path under configured game library folders.
 - Supports multiple game folders.
+- Can auto-scan local Steam, Epic, GOG, WeGame, XboxGames, and common game folders.
 - Keeps an optional manual process-name list for games outside the libraries.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
@@ -34,7 +35,7 @@ The included config is set to:
 
 ```json
 {
-  "qbee_url": "http://[::1]:8080",
+  "qbee_url": "http://127.0.0.1:8080",
   "username": "admin",
   "password": "adminadmin",
   "game_folders": [
@@ -69,5 +70,6 @@ The main desktop app is implemented with .NET Framework WinForms in `QbeeGameSpe
 - qBittorrent must be running.
 - Web UI credentials must be correct.
 - If `http://127.0.0.1:8080` opens `CEF remote debugging`, Steam's CEF helper may be occupying the IPv4 loopback address. Try `http://[::1]:8080` first. If that still fails, change qBittorrent Web UI to another port such as `8081`, then set the app URL to `http://127.0.0.1:8081`.
+- If alternative speed limits stay enabled after closing a game, check `qbee_game_speed_limiter.log`; it records the detected executable path that is keeping monitor mode active.
 - The executable does not bundle your config. Keep the JSON file beside the EXE.
 - Passwords are stored in the local JSON config file as plain text.

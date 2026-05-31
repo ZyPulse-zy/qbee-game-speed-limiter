@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading;
 using System.Web.Script.Serialization;
@@ -29,7 +30,7 @@ namespace QbeeGameSpeedLimiter
         {
             return new AppConfig
             {
-                qbee_url = "http://[::1]:8080",
+                qbee_url = "http://127.0.0.1:8080",
                 username = "admin",
                 password = "adminadmin",
                 game_folders = new List<string>
@@ -41,6 +42,8 @@ namespace QbeeGameSpeedLimiter
                 exclude_processes = new List<string>
                 {
                     "steam.exe",
+                    "steamservice.exe",
+                    "steamwebhelper.exe",
                     "epicgameslauncher.exe",
                     "goggalaxy.exe",
                     "wegame.exe",
@@ -304,6 +307,8 @@ namespace QbeeGameSpeedLimiter
         {
             var client = new QbeeClient(config);
             bool? lastGameState = null;
+            var lastDetectedGame = "";
+            var lastStillRunningLog = DateTime.MinValue;
 
             Log(config, "Monitor started.");
             Log(config, "Game folders: " + string.Join(", ", config.game_folders ?? new List<string>()));
@@ -334,6 +339,19 @@ namespace QbeeGameSpeedLimiter
                         }
 
                         lastGameState = gameRunning;
+                        lastDetectedGame = detectedGame ?? "";
+                        lastStillRunningLog = DateTime.Now;
+                    }
+                    else if (gameRunning && detectedGame != lastDetectedGame)
+                    {
+                        lastDetectedGame = detectedGame ?? "";
+                        Log(config, "Still detecting game process. Detected: " + lastDetectedGame);
+                        lastStillRunningLog = DateTime.Now;
+                    }
+                    else if (gameRunning && (DateTime.Now - lastStillRunningLog).TotalMinutes >= 5)
+                    {
+                        Log(config, "Still detecting game process. Detected: " + detectedGame);
+                        lastStillRunningLog = DateTime.Now;
                     }
 
                     Thread.Sleep(Math.Max(1, config.check_interval_seconds) * 1000);
@@ -403,6 +421,90 @@ namespace QbeeGameSpeedLimiter
             var line = "[" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "] " + message;
             var path = Path.Combine(ConfigStore.AppDirectory, config.log_file ?? "qbee_game_speed_limiter.log");
             File.AppendAllText(path, line + Environment.NewLine, Encoding.UTF8);
+        }
+    }
+
+    public static class GameLibraryScanner
+    {
+        public static List<string> Scan()
+        {
+            var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            AddSteamLibraries(folders);
+            AddEpicLibraries(folders);
+            AddCommonFolders(folders);
+            return folders
+                .Where(Directory.Exists)
+                .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static void AddSteamLibraries(HashSet<string> folders)
+        {
+            var candidates = new List<string>
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Steam\steamapps\libraryfolders.vdf"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Steam\steamapps\libraryfolders.vdf")
+            };
+
+            foreach (var drive in DriveInfo.GetDrives().Where(drive => drive.IsReady))
+            {
+                candidates.Add(Path.Combine(drive.RootDirectory.FullName, @"SteamLibrary\steamapps\libraryfolders.vdf"));
+            }
+
+            foreach (var file in candidates.Where(File.Exists))
+            {
+                var steamapps = Path.GetDirectoryName(file);
+                if (!string.IsNullOrWhiteSpace(steamapps)) folders.Add(steamapps);
+
+                var text = File.ReadAllText(file);
+                foreach (Match match in Regex.Matches(text, "\"path\"\\s+\"([^\"]+)\"", RegexOptions.IgnoreCase))
+                {
+                    var libraryRoot = match.Groups[1].Value.Replace(@"\\", @"\");
+                    folders.Add(Path.Combine(libraryRoot, "steamapps"));
+                }
+            }
+        }
+
+        private static void AddEpicLibraries(HashSet<string> folders)
+        {
+            var manifestDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                @"Epic\EpicGamesLauncher\Data\Manifests");
+            if (!Directory.Exists(manifestDir)) return;
+
+            foreach (var file in Directory.GetFiles(manifestDir, "*.item"))
+            {
+                var text = File.ReadAllText(file);
+                var match = Regex.Match(text, "\"InstallLocation\"\\s*:\\s*\"([^\"]+)\"", RegexOptions.IgnoreCase);
+                if (match.Success)
+                {
+                    folders.Add(match.Groups[1].Value.Replace(@"\\", @"\"));
+                }
+            }
+        }
+
+        private static void AddCommonFolders(HashSet<string> folders)
+        {
+            foreach (var drive in DriveInfo.GetDrives().Where(drive => drive.IsReady))
+            {
+                var root = drive.RootDirectory.FullName;
+                foreach (var relative in new[]
+                {
+                    @"SteamLibrary\steamapps",
+                    @"Games",
+                    @"Epic Games",
+                    @"GOG Games",
+                    @"WeGameApps",
+                    @"XboxGames",
+                    @"Battle.net"
+                })
+                {
+                    folders.Add(Path.Combine(root, relative));
+                }
+            }
+
+            folders.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"Steam\steamapps"));
+            folders.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"Steam\steamapps"));
         }
     }
 
@@ -502,12 +604,15 @@ namespace QbeeGameSpeedLimiter
             };
             folderLayout.Controls.Add(folderButtons, 1, 0);
 
+            var scanButton = new Button { Text = "自动扫描", Width = 92 };
             var addButton = new Button { Text = "添加", Width = 92 };
             var removeButton = new Button { Text = "删除", Width = 92 };
             var openButton = new Button { Text = "打开配置", Width = 92 };
+            scanButton.Click += delegate { ScanFolders(); };
             addButton.Click += delegate { AddFolder(); };
             removeButton.Click += delegate { RemoveFolder(); };
             openButton.Click += delegate { Process.Start("explorer.exe", ConfigStore.AppDirectory); };
+            folderButtons.Controls.Add(scanButton);
             folderButtons.Controls.Add(addButton);
             folderButtons.Controls.Add(removeButton);
             folderButtons.Controls.Add(openButton);
@@ -594,6 +699,24 @@ namespace QbeeGameSpeedLimiter
                     statusLabel.Text = "已添加游戏库";
                 }
             }
+        }
+
+        private void ScanFolders()
+        {
+            var found = GameLibraryScanner.Scan();
+            var existing = new HashSet<string>(folderList.Items.Cast<string>(), StringComparer.OrdinalIgnoreCase);
+            var added = 0;
+
+            foreach (var folder in found)
+            {
+                if (existing.Add(folder))
+                {
+                    folderList.Items.Add(folder);
+                    added++;
+                }
+            }
+
+            statusLabel.Text = added > 0 ? "自动扫描完成，新增 " + added + " 个游戏库。" : "自动扫描完成，没有发现新的游戏库。";
         }
 
         private void RemoveFolder()
