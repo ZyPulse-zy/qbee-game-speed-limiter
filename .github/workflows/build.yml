@@ -14,8 +14,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up MinGW
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+
       - name: Build executable
         shell: pwsh
+        env:
+          PATH: C:\msys64\ucrt64\bin;${{ env.PATH }}
         run: .\build.ps1
 
       - name: Prepare artifact
@@ -27,6 +36,7 @@ jobs:
           Copy-Item README.md dist\
           Copy-Item README.zh-CN.md dist\
           Copy-Item docs\USER_GUIDE.zh-CN.md dist\
+          Copy-Item CHANGELOG.md dist\
           Copy-Item LICENSE dist\
 
       - name: Upload artifact

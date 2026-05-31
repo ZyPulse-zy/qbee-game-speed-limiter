@@ -1,23 +1,20 @@
 $ErrorActionPreference = "Stop"
 
-$compiler = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-if (-not (Test-Path $compiler)) {
-    $compiler = "$env:WINDIR\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+$compiler = Get-Command g++ -ErrorAction SilentlyContinue
+if (-not $compiler) {
+    throw "Cannot find g++. Install MinGW-w64 or run the GitHub Actions workflow, which installs MSYS2/MinGW."
 }
 
-if (-not (Test-Path $compiler)) {
-    throw "Cannot find .NET Framework C# compiler."
-}
-
-& $compiler `
-    /nologo `
-    /target:winexe `
-    /platform:x64 `
-    /out:qbee_game_speed_limiter.exe `
-    /reference:System.dll `
-    /reference:System.Core.dll `
-    /reference:System.Drawing.dll `
-    /reference:System.Management.dll `
-    /reference:System.Web.Extensions.dll `
-    /reference:System.Windows.Forms.dll `
-    QbeeGameSpeedLimiter.cs
+& $compiler.Source `
+    -std=c++17 `
+    -O2 `
+    -municode `
+    -mwindows `
+    -static-libgcc `
+    -static-libstdc++ `
+    -o qbee_game_speed_limiter.exe `
+    native\QbeeGameSpeedLimiter.cpp `
+    -lwinhttp `
+    -lcomctl32 `
+    -lole32 `
+    -lshell32

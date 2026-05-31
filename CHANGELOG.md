@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.4
+
+- Rewrote the desktop app as a native C++/Win32 program to lower idle memory usage.
+- Replaced the WinForms layout with a cleaner minimal native UI.
+- Updated local and GitHub Actions builds to use MinGW-w64 g++.
+
 ## v0.1.3
 
 - Stop monitoring from a background worker so the UI no longer freezes while qBittorrent API calls finish.

@@ -4,7 +4,7 @@
 
 这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭。
 
-最新版下载：[v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.2)
+最新版下载：[v0.1.4](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.4)
 
 ## 功能
 
@@ -23,6 +23,7 @@
 - 使用缓存式进程检测，降低后台 CPU 占用。
 - 游戏库自动扫描会在后台执行，扫描时界面不会卡住。
 - 停止监控会在后台执行，等待 qB API 返回时窗口不会卡住。
+- 已重构为原生 C++/Win32 程序，空闲内存更低，界面更简约。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载
@@ -55,6 +56,7 @@
 - 如果游戏启动前备用速度限制已经是打开状态，程序会认为这是你的手动设置，游戏退出后会保持打开。
 - 程序会阻止重复打开多个实例，避免多个窗口互相抢状态。
 - 默认检测间隔是 5 秒。想进一步降低后台占用，可以把 `check_interval_seconds` 调大；想更快响应游戏启动和退出，可以调小。
+- 原生 C++ 版本在开发机空闲实测约 14.6 MB 工作集、2.3 MB 私有内存。
 
 ## qB Web UI 地址
 
@@ -110,19 +112,19 @@ qbee_game_speed_limiter.json
 
 ## 构建
 
-在 Windows 上运行：
+先安装 MinGW-w64 g++，然后在 Windows 上运行：
 
 ```powershell
 .\build.ps1
 ```
 
-主程序是 .NET Framework WinForms 应用，源码为：
+主程序是原生 C++/Win32 应用，源码为：
 
 ```text
-QbeeGameSpeedLimiter.cs
+native/QbeeGameSpeedLimiter.cpp
 ```
 
-`qbee_game_speed_limiter.py` 保留为脚本友好的旧版实现。
+`QbeeGameSpeedLimiter.cs` 和 `qbee_game_speed_limiter.py` 保留为旧版/参考实现。
 
 ## 排查
 

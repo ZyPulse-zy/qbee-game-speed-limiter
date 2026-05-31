@@ -4,7 +4,7 @@
 
 Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
-Latest release: [v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.2)
+Latest release: [v0.1.4](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.4)
 
 ## Features
 
@@ -21,6 +21,7 @@ Latest release: [v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 - Uses cached process detection to keep background CPU usage low.
 - Runs game library auto-scan in the background so the UI stays responsive.
 - Stops monitoring in the background so the window does not freeze while qBittorrent API calls finish.
+- Rewritten as a native C++/Win32 app for lower idle memory usage and a cleaner minimal UI.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - GitHub Actions builds a Windows executable artifact.
@@ -28,7 +29,7 @@ Latest release: [v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 ## Download
 
 Download the latest Windows package from [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
-Tagged versions such as `v0.1.2` are packaged automatically by the Release workflow.
+Tagged versions such as `v0.1.4` are packaged automatically by the Release workflow.
 
 The packaged artifact contains:
 
@@ -66,6 +67,7 @@ The included config is set to:
 - If alternative speed limits were already enabled before a game started, the app keeps them enabled after the game exits.
 - Only one app instance can run at a time.
 - The default detection interval is 5 seconds. Increase `check_interval_seconds` to reduce background activity further, or decrease it for faster reactions.
+- The native C++ build measured about 14.6 MB working set and 2.3 MB private memory while idle on the development machine.
 
 ## Config
 
@@ -100,12 +102,14 @@ The repository tracks `qbee_game_speed_limiter.example.json`. Your local `qbee_g
 
 ## Build
 
+Install MinGW-w64 g++ first, then run:
+
 ```powershell
 .\build.ps1
 ```
 
-The main desktop app is implemented with .NET Framework WinForms in `QbeeGameSpeedLimiter.cs`.
-`qbee_game_speed_limiter.py` is kept as a script-friendly legacy version.
+The main desktop app is implemented as a native C++/Win32 program in `native/QbeeGameSpeedLimiter.cpp`.
+`QbeeGameSpeedLimiter.cs` and `qbee_game_speed_limiter.py` are kept as legacy/reference implementations.
 
 The build writes `qbee_game_speed_limiter.exe` in the project folder. The executable is ignored by Git; publish it through GitHub Releases or Actions artifacts instead of committing it.
 
