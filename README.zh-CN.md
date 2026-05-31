@@ -15,6 +15,7 @@
 - 会读取 Steam `appmanifest_*.acf`，并过滤 Wallpaper Engine、服务器工具、SDK、运行库、基准测试、编辑器等常见非游戏条目。
 - 通过 qBittorrent Web UI API 控制备用速度限制。
 - 提供 Windows 桌面配置界面。
+- 支持当前用户开机自启动，并可在启动后自动开始监控。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载
@@ -86,6 +87,8 @@ qbee_game_speed_limiter.json
   "game_processes": [],
   "check_interval_seconds": 3,
   "restore_on_exit": true,
+  "start_with_windows": false,
+  "auto_start_monitor": false,
   "log_file": "qbee_game_speed_limiter.log"
 }
 ```

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net;
+using Microsoft.Win32;
 using System.Text.RegularExpressions;
 using System.Text;
 using System.Threading;
@@ -26,6 +27,8 @@ namespace QbeeGameSpeedLimiter
         public List<string> exclude_steam_app_keywords { get; set; }
         public int check_interval_seconds { get; set; }
         public bool restore_on_exit { get; set; }
+        public bool start_with_windows { get; set; }
+        public bool auto_start_monitor { get; set; }
         public string log_file { get; set; }
 
         public static AppConfig Default()
@@ -86,6 +89,8 @@ namespace QbeeGameSpeedLimiter
                 },
                 check_interval_seconds = 3,
                 restore_on_exit = true,
+                start_with_windows = false,
+                auto_start_monitor = false,
                 log_file = "qbee_game_speed_limiter.log"
             };
         }
@@ -656,12 +661,48 @@ namespace QbeeGameSpeedLimiter
         }
     }
 
+    public static class StartupManager
+    {
+        private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string ValueName = "QbeeGameSpeedLimiter";
+
+        public static bool IsEnabled()
+        {
+            using (var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, false))
+            {
+                return key != null && key.GetValue(ValueName) != null;
+            }
+        }
+
+        public static void SetEnabled(bool enabled)
+        {
+            using (var key = Registry.CurrentUser.CreateSubKey(RunKeyPath))
+            {
+                if (key == null)
+                {
+                    throw new InvalidOperationException("无法打开当前用户启动项注册表。");
+                }
+
+                if (enabled)
+                {
+                    key.SetValue(ValueName, "\"" + Application.ExecutablePath + "\"");
+                }
+                else
+                {
+                    key.DeleteValue(ValueName, false);
+                }
+            }
+        }
+    }
+
     public class MainForm : Form
     {
         private readonly TextBox urlBox = new TextBox();
         private readonly TextBox usernameBox = new TextBox();
         private readonly TextBox passwordBox = new TextBox();
         private readonly NumericUpDown intervalBox = new NumericUpDown();
+        private readonly CheckBox startWithWindowsBox = new CheckBox();
+        private readonly CheckBox autoStartMonitorBox = new CheckBox();
         private readonly ListBox folderList = new ListBox();
         private readonly Label statusLabel = new Label();
         private readonly Label detectedLabel = new Label();
@@ -676,12 +717,16 @@ namespace QbeeGameSpeedLimiter
             monitor = new GameMonitor(SetStatusSafe, SetDetectedGameSafe);
             Text = "qbee Game Speed Limiter";
             MinimumSize = new Size(760, 560);
-            Size = new Size(820, 600);
+            Size = new Size(820, 640);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Microsoft YaHei UI", 9F);
 
             BuildUi();
             LoadConfigToUi();
+            if (config.auto_start_monitor)
+            {
+                BeginInvoke((Action)StartMonitor);
+            }
         }
 
         private void BuildUi()
@@ -693,7 +738,7 @@ namespace QbeeGameSpeedLimiter
                 ColumnCount = 1,
                 RowCount = 4
             };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 168));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 198));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
@@ -707,7 +752,7 @@ namespace QbeeGameSpeedLimiter
                 Dock = DockStyle.Fill,
                 Padding = new Padding(12),
                 ColumnCount = 2,
-                RowCount = 4
+                RowCount = 5
             };
             accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
             accountLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -729,6 +774,15 @@ namespace QbeeGameSpeedLimiter
             options.Controls.Add(new Label { Text = "秒", AutoSize = true, Padding = new Padding(0, 6, 18, 0) });
             options.Controls.Add(testButton);
             accountLayout.Controls.Add(options, 1, 3);
+
+            var startupOptions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+            startWithWindowsBox.Text = "开机自启动";
+            startWithWindowsBox.AutoSize = true;
+            autoStartMonitorBox.Text = "启动后自动开始监控";
+            autoStartMonitorBox.AutoSize = true;
+            startupOptions.Controls.Add(startWithWindowsBox);
+            startupOptions.Controls.Add(autoStartMonitorBox);
+            accountLayout.Controls.Add(startupOptions, 1, 4);
 
             var folders = new GroupBox { Text = "游戏库文件夹", Dock = DockStyle.Fill };
             root.Controls.Add(folders, 0, 1);
@@ -822,6 +876,8 @@ namespace QbeeGameSpeedLimiter
             usernameBox.Text = config.username;
             passwordBox.Text = config.password;
             intervalBox.Value = Math.Max(1, Math.Min(60, config.check_interval_seconds));
+            startWithWindowsBox.Checked = StartupManager.IsEnabled();
+            autoStartMonitorBox.Checked = config.auto_start_monitor;
             folderList.Items.Clear();
             foreach (var folder in config.game_folders ?? new List<string>())
             {
@@ -836,7 +892,20 @@ namespace QbeeGameSpeedLimiter
             config.password = passwordBox.Text;
             config.check_interval_seconds = Convert.ToInt32(intervalBox.Value);
             config.game_folders = folderList.Items.Cast<string>().ToList();
+            config.start_with_windows = startWithWindowsBox.Checked;
+            config.auto_start_monitor = autoStartMonitorBox.Checked;
             ConfigStore.Save(config);
+            try
+            {
+                StartupManager.SetEnabled(startWithWindowsBox.Checked);
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show(this, error.Message, "开机自启动设置失败", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                startWithWindowsBox.Checked = StartupManager.IsEnabled();
+                config.start_with_windows = startWithWindowsBox.Checked;
+                ConfigStore.Save(config);
+            }
             statusLabel.Text = "已保存";
         }
 

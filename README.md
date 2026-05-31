@@ -13,6 +13,7 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Shows the currently detected executable so stuck monitoring can be diagnosed.
 - Ignores common runtime/launcher/installer folders inside game libraries.
 - Reads Steam app manifests and filters common non-game app names such as tools, servers, SDKs, runtimes, benchmarks, and Wallpaper Engine.
+- Can register itself for current-user Windows startup and auto-start monitoring when launched.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - GitHub Actions builds a Windows executable artifact.
@@ -75,6 +76,8 @@ The repository tracks `qbee_game_speed_limiter.example.json`. Your local `qbee_g
   ],
   "check_interval_seconds": 3,
   "restore_on_exit": true,
+  "start_with_windows": false,
+  "auto_start_monitor": false,
   "log_file": "qbee_game_speed_limiter.log"
 }
 ```
