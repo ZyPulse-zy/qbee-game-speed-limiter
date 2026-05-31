@@ -51,6 +51,17 @@ const ID_SAVE: isize = 1013;
 const ID_START: isize = 1014;
 const ID_STOP: isize = 1015;
 
+const COLOR_BG: u32 = rgb(8, 10, 15);
+const COLOR_CARD: u32 = rgb(17, 19, 28);
+const COLOR_INPUT: u32 = rgb(11, 13, 20);
+const COLOR_BORDER: u32 = rgb(39, 45, 61);
+const COLOR_TEXT: u32 = rgb(229, 231, 235);
+const COLOR_MUTED: u32 = rgb(156, 163, 175);
+const COLOR_PRIMARY: u32 = rgb(99, 102, 241);
+const COLOR_PRIMARY_HOT: u32 = rgb(129, 140, 248);
+const COLOR_BUTTON: u32 = rgb(28, 32, 44);
+const COLOR_BUTTON_DISABLED: u32 = rgb(31, 35, 46);
+
 #[derive(Clone, Serialize, Deserialize)]
 struct AppConfig {
     qbee_url: String,
@@ -146,6 +157,9 @@ struct Handles {
     bg: HBRUSH,
     card: HBRUSH,
     input: HBRUSH,
+    button: HBRUSH,
+    primary: HBRUSH,
+    disabled: HBRUSH,
 }
 
 struct App {
@@ -845,6 +859,73 @@ unsafe fn make_font(size: i32, weight: i32) -> HFONT {
     )
 }
 
+unsafe fn draw_panel(hdc: HDC, rect: RECT, brush: HBRUSH) {
+    let pen = CreatePen(PS_SOLID, 1, COLOR_BORDER);
+    let old_pen = SelectObject(hdc, pen as _);
+    let old_brush = SelectObject(hdc, brush as _);
+    RoundRect(hdc, rect.left, rect.top, rect.right, rect.bottom, 18, 18);
+    SelectObject(hdc, old_brush);
+    SelectObject(hdc, old_pen);
+    DeleteObject(pen as _);
+}
+
+unsafe fn draw_owner_button(item: &DRAWITEMSTRUCT, handles: &Handles) {
+    let id = item.CtlID as isize;
+    let disabled = (item.itemState & ODS_DISABLED as u32) != 0;
+    let pressed = (item.itemState & ODS_SELECTED as u32) != 0;
+    let focused = (item.itemState & ODS_FOCUS as u32) != 0;
+    let is_primary = id == ID_START || id == ID_TEST;
+    let brush = if disabled {
+        handles.disabled
+    } else if is_primary {
+        handles.primary
+    } else {
+        handles.button
+    };
+    let border = if focused || (pressed && is_primary) {
+        COLOR_PRIMARY_HOT
+    } else {
+        COLOR_BORDER
+    };
+    let text_color = if disabled {
+        COLOR_MUTED
+    } else if is_primary {
+        rgb(255, 255, 255)
+    } else {
+        COLOR_TEXT
+    };
+
+    let pen = CreatePen(PS_SOLID, 1, border);
+    let old_pen = SelectObject(item.hDC, pen as _);
+    let old_brush = SelectObject(item.hDC, brush as _);
+    RoundRect(
+        item.hDC,
+        item.rcItem.left,
+        item.rcItem.top,
+        item.rcItem.right,
+        item.rcItem.bottom,
+        10,
+        10,
+    );
+    SelectObject(item.hDC, old_brush);
+    SelectObject(item.hDC, old_pen);
+    DeleteObject(pen as _);
+
+    let len = GetWindowTextLengthW(item.hwndItem) as usize;
+    let mut text = vec![0u16; len + 1];
+    GetWindowTextW(item.hwndItem, text.as_mut_ptr(), text.len() as i32);
+    let mut text_rect = item.rcItem;
+    SetBkMode(item.hDC, TRANSPARENT as i32);
+    SetTextColor(item.hDC, text_color);
+    DrawTextW(
+        item.hDC,
+        text.as_mut_ptr(),
+        -1,
+        &mut text_rect,
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+    );
+}
+
 fn save_from_ui(app: &mut App, show_status: bool) -> bool {
     let handles = &app.handles;
     let url = get_text(handles.url).trim().to_string();
@@ -909,9 +990,12 @@ unsafe extern "system" fn wnd_proc(
 ) -> LRESULT {
     match msg {
         WM_CREATE => {
-            let bg = CreateSolidBrush(rgb(248, 250, 252));
-            let card = CreateSolidBrush(rgb(255, 255, 255));
-            let input = CreateSolidBrush(rgb(249, 250, 251));
+            let bg = CreateSolidBrush(COLOR_BG);
+            let card = CreateSolidBrush(COLOR_CARD);
+            let input = CreateSolidBrush(COLOR_INPUT);
+            let button = CreateSolidBrush(COLOR_BUTTON);
+            let primary = CreateSolidBrush(COLOR_PRIMARY);
+            let disabled = CreateSolidBrush(COLOR_BUTTON_DISABLED);
             let font = make_font(18, FW_NORMAL as i32);
             let title_font = make_font(31, FW_SEMIBOLD as i32);
 
@@ -1000,7 +1084,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "测试连接",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 240,
                 228,
                 104,
@@ -1050,7 +1134,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "自动扫描",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 720,
                 342,
                 112,
@@ -1062,7 +1146,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "添加",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 720,
                 386,
                 112,
@@ -1074,7 +1158,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "删除",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 720,
                 430,
                 112,
@@ -1086,7 +1170,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "打开配置",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 720,
                 474,
                 112,
@@ -1111,7 +1195,7 @@ unsafe extern "system" fn wnd_proc(
             create_window_text(
                 "BUTTON",
                 "保存",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 486,
                 608,
                 100,
@@ -1123,7 +1207,7 @@ unsafe extern "system" fn wnd_proc(
             let start = create_window_text(
                 "BUTTON",
                 "开始监控",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 598,
                 608,
                 112,
@@ -1135,7 +1219,7 @@ unsafe extern "system" fn wnd_proc(
             let stop = create_window_text(
                 "BUTTON",
                 "停止监控",
-                BS_PUSHBUTTON as u32,
+                BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
                 722,
                 608,
                 112,
@@ -1165,6 +1249,9 @@ unsafe extern "system" fn wnd_proc(
                 bg,
                 card,
                 input,
+                button,
+                primary,
+                disabled,
             };
             let app = Rc::new(RefCell::new(App {
                 config,
@@ -1200,14 +1287,14 @@ unsafe extern "system" fn wnd_proc(
                         right: 858,
                         bottom: 276,
                     };
-                    FillRect(hdc, &rect, handles.card);
+                    draw_panel(hdc, rect, handles.card);
                     rect = RECT {
                         left: 28,
                         top: 296,
                         right: 858,
                         bottom: 558,
                     };
-                    FillRect(hdc, &rect, handles.card);
+                    draw_panel(hdc, rect, handles.card);
                 }
             });
             1
@@ -1215,18 +1302,19 @@ unsafe extern "system" fn wnd_proc(
         WM_CTLCOLORSTATIC => {
             let hdc = wparam as HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
-            SetTextColor(hdc, rgb(31, 41, 55));
-            APP.with(|slot| {
-                slot.borrow()
-                    .as_ref()
-                    .and_then(|app| app.try_borrow().ok().map(|app| app.handles.bg as isize))
-                    .unwrap_or(0)
-            })
+            SetTextColor(hdc, COLOR_TEXT);
+            GetStockObject(NULL_BRUSH as i32) as isize
+        }
+        WM_CTLCOLORBTN => {
+            let hdc = wparam as HDC;
+            SetBkMode(hdc, TRANSPARENT as i32);
+            SetTextColor(hdc, COLOR_TEXT);
+            GetStockObject(NULL_BRUSH as i32) as isize
         }
         WM_CTLCOLOREDIT | WM_CTLCOLORLISTBOX => {
             let hdc = wparam as HDC;
-            SetBkColor(hdc, rgb(249, 250, 251));
-            SetTextColor(hdc, rgb(31, 41, 55));
+            SetBkColor(hdc, COLOR_INPUT);
+            SetTextColor(hdc, COLOR_TEXT);
             APP.with(|slot| {
                 slot.borrow()
                     .as_ref()
@@ -1234,6 +1322,14 @@ unsafe extern "system" fn wnd_proc(
                     .unwrap_or(0)
             })
         }
+        WM_DRAWITEM => APP.with(|slot| {
+            if let Some(app) = slot.borrow().as_ref() {
+                if let Ok(app) = app.try_borrow() {
+                    draw_owner_button(&*(lparam as *const DRAWITEMSTRUCT), &app.handles);
+                }
+            }
+            1
+        }),
         WM_COMMAND => {
             let id = (wparam & 0xffff) as isize;
             APP.with(|slot| {
@@ -1353,6 +1449,9 @@ unsafe extern "system" fn wnd_proc(
                     DeleteObject(handles.bg as _);
                     DeleteObject(handles.card as _);
                     DeleteObject(handles.input as _);
+                    DeleteObject(handles.button as _);
+                    DeleteObject(handles.primary as _);
+                    DeleteObject(handles.disabled as _);
                 }
             });
             PostQuitMessage(0);
@@ -1362,7 +1461,7 @@ unsafe extern "system" fn wnd_proc(
     }
 }
 
-fn rgb(r: u8, g: u8, b: u8) -> u32 {
+const fn rgb(r: u8, g: u8, b: u8) -> u32 {
     r as u32 | ((g as u32) << 8) | ((b as u32) << 16)
 }
 

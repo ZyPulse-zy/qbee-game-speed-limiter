@@ -1,10 +1,10 @@
-# qbee Game Speed Limiter
+# qbee 游戏限速助手
 
 [English](README.md) | 简体中文
 
-这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭。
+这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭限制。
 
-最新版下载：[v0.1.6](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.6)
+最新版下载：[v0.1.7](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.7)
 
 ## 功能
 
@@ -13,17 +13,17 @@
 - 支持自动扫描本机 Steam、Epic、GOG、WeGame、XboxGames 和常见游戏目录。
 - 支持手动补充进程名。
 - 界面会显示当前检测到的 exe 路径，方便排查误判。
-- 默认忽略 Steamworks、运行库、安装器、启动器等常见非游戏目录。
+- 默认忽略 Steamworks、运行库、安装器、启动器、工具类软件等常见非游戏目录。
 - 会读取 Steam `appmanifest_*.acf`，并过滤 Wallpaper Engine、服务器工具、SDK、运行库、基准测试、编辑器等常见非游戏条目。
 - 通过 qBittorrent Web UI API 控制备用速度限制。
-- 提供 Windows 桌面配置界面。
+- 提供 Windows 桌面配置界面，可填写 qB Web UI 地址、用户名、密码，并选择游戏库文件夹。
 - 支持当前用户开机自启动，并可在启动后自动开始监控。
 - 如果备用速度限制原本就是打开的，游戏退出后会保持打开，不会误关。
 - 阻止重复打开多个程序实例，避免互相抢状态。
 - 使用缓存式进程检测，降低后台 CPU 占用。
-- 游戏库自动扫描会在后台执行，扫描时界面不会卡住。
-- 停止监控会在后台执行，等待 qB API 返回时窗口不会卡住。
-- 已重构为 Rust + 原生 Win32 程序，空闲内存更低，界面参考 Tailwind UI 风格保持简约。
+- 游戏库自动扫描和停止监控都会在后台执行，窗口不容易卡住。
+- 已重构为 Rust + 原生 Win32 程序，空闲内存更低。
+- 界面按 [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的设计文档思路整理，使用深色、现代、简洁的 Linear/Tailwind 风格；项目内有 [`DESIGN.md`](DESIGN.md) 记录设计规则。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载
@@ -35,7 +35,9 @@
 - `qbee_game_speed_limiter.exe`
 - `qbee_game_speed_limiter.json`
 - `README.md`
+- `README.zh-CN.md`
 - `USER_GUIDE.zh-CN.md`
+- `DESIGN.md`
 - `LICENSE`
 
 更详细的中文使用说明见：[docs/USER_GUIDE.zh-CN.md](docs/USER_GUIDE.zh-CN.md)
@@ -72,7 +74,11 @@ http://127.0.0.1:8080
 http://[::1]:8080
 ```
 
-程序检测到这种情况时，也会自动尝试切换到 IPv6 本机地址。
+如果仍然不行，建议在 qBittorrent 设置里把 Web UI 端口改成 `8081` 或其他端口，然后在本工具里填写：
+
+```text
+http://127.0.0.1:8081
+```
 
 ## 配置
 
@@ -90,29 +96,9 @@ qbee_game_speed_limiter.json
 
 真实配置文件会被 Git 忽略，因为里面可能包含 Web UI 用户名和密码。
 
-示例：
-
-```json
-{
-  "qbee_url": "http://127.0.0.1:8080",
-  "username": "admin",
-  "password": "",
-  "game_folders": [
-    "C:\\Program Files (x86)\\Steam\\steamapps",
-    "D:\\SteamLibrary\\steamapps"
-  ],
-  "game_processes": [],
-  "check_interval_seconds": 5,
-  "restore_on_exit": true,
-  "start_with_windows": false,
-  "auto_start_monitor": false,
-  "log_file": "qbee_game_speed_limiter.log"
-}
-```
-
 ## 构建
 
-先安装 Rust 和 MinGW-w64，然后在 Windows 上运行：
+先安装 Rust 和 MinGW-w64，然后在 Windows 中运行：
 
 ```powershell
 .\build.ps1
@@ -124,7 +110,7 @@ qbee_game_speed_limiter.json
 src/main.rs
 ```
 
-`native/QbeeGameSpeedLimiter.cpp`、`QbeeGameSpeedLimiter.cs` 和 `qbee_game_speed_limiter.py` 保留为旧版/参考实现。
+旧的 C++、C# 和 Python 实现仅保留为参考。
 
 ## 排查
 

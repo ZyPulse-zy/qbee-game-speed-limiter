@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.7
+
+- Restyled the Rust Win32 UI using a `DESIGN.md`-first workflow inspired by `awesome-design-md`.
+- Added a dark Linear/Tailwind-like visual system with native owner-drawn buttons, dark inputs, bordered panels, and lower-noise status presentation.
+- Documented the project's UI rules in `DESIGN.md` so future interface work stays consistent without adding a heavy UI framework.
+
 ## v0.1.6
 
 - Fixed a Rust UI re-entrant borrow crash that could close the app after clicking `Test connection`.
