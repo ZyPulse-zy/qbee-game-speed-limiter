@@ -22,6 +22,7 @@ namespace QbeeGameSpeedLimiter
         public List<string> game_folders { get; set; }
         public List<string> game_processes { get; set; }
         public List<string> exclude_processes { get; set; }
+        public List<string> exclude_path_keywords { get; set; }
         public int check_interval_seconds { get; set; }
         public bool restore_on_exit { get; set; }
         public string log_file { get; set; }
@@ -48,6 +49,18 @@ namespace QbeeGameSpeedLimiter
                     "goggalaxy.exe",
                     "wegame.exe",
                     "battle.net.exe"
+                },
+                exclude_path_keywords = new List<string>
+                {
+                    @"\steamapps\common\steamworks shared\",
+                    @"\steamapps\common\proton ",
+                    @"\steamapps\common\steam linux runtime",
+                    @"\_commonredist\",
+                    @"\redist\",
+                    @"\redistributable\",
+                    @"\installer\",
+                    @"\uninstall\",
+                    @"\launcher\"
                 },
                 check_interval_seconds = 3,
                 restore_on_exit = true,
@@ -81,6 +94,7 @@ namespace QbeeGameSpeedLimiter
             if (config.game_folders == null) config.game_folders = defaults.game_folders;
             if (config.game_processes == null) config.game_processes = defaults.game_processes;
             if (config.exclude_processes == null) config.exclude_processes = defaults.exclude_processes;
+            if (config.exclude_path_keywords == null) config.exclude_path_keywords = defaults.exclude_path_keywords;
             if (config.check_interval_seconds < 1) config.check_interval_seconds = defaults.check_interval_seconds;
             if (string.IsNullOrWhiteSpace(config.log_file)) config.log_file = defaults.log_file;
 
@@ -311,12 +325,14 @@ namespace QbeeGameSpeedLimiter
     public class GameMonitor
     {
         private readonly Action<string> onStatus;
+        private readonly Action<string> onDetectedGame;
         private Thread worker;
         private bool stopping;
 
-        public GameMonitor(Action<string> onStatus)
+        public GameMonitor(Action<string> onStatus, Action<string> onDetectedGame)
         {
             this.onStatus = onStatus;
+            this.onDetectedGame = onDetectedGame;
         }
 
         public bool IsRunning
@@ -359,6 +375,7 @@ namespace QbeeGameSpeedLimiter
                 {
                     var detectedGame = DetectRunningGame(config);
                     var gameRunning = detectedGame != null;
+                    onDetectedGame(detectedGame ?? "");
 
                     if (lastGameState == null || gameRunning != lastGameState.Value)
                     {
@@ -403,6 +420,7 @@ namespace QbeeGameSpeedLimiter
             }
             finally
             {
+                onDetectedGame("");
                 if (config.restore_on_exit)
                 {
                     try
@@ -428,6 +446,10 @@ namespace QbeeGameSpeedLimiter
                 (config.game_processes ?? new List<string>()).Select(item => item.ToLowerInvariant()));
             var excluded = new HashSet<string>(
                 (config.exclude_processes ?? new List<string>()).Select(item => item.ToLowerInvariant()));
+            var excludedPathKeywords = (config.exclude_path_keywords ?? new List<string>())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.ToLowerInvariant())
+                .ToList();
 
             using (var searcher = new ManagementObjectSearcher("SELECT Name, ExecutablePath FROM Win32_Process"))
             {
@@ -437,7 +459,11 @@ namespace QbeeGameSpeedLimiter
                     var path = Convert.ToString(process["ExecutablePath"] ?? "");
                     if (string.IsNullOrWhiteSpace(name) || excluded.Contains(name)) continue;
                     if (processNames.Contains(name)) return name;
-                    if (!string.IsNullOrWhiteSpace(path) && folders.Any(folder => IsUnderFolder(path, folder))) return path;
+                    if (string.IsNullOrWhiteSpace(path)) continue;
+
+                    var normalizedPath = NormalizePath(path);
+                    if (excludedPathKeywords.Any(keyword => normalizedPath.Contains(keyword))) continue;
+                    if (folders.Any(folder => IsUnderFolder(path, folder))) return path;
                 }
             }
 
@@ -555,6 +581,7 @@ namespace QbeeGameSpeedLimiter
         private readonly NumericUpDown intervalBox = new NumericUpDown();
         private readonly ListBox folderList = new ListBox();
         private readonly Label statusLabel = new Label();
+        private readonly Label detectedLabel = new Label();
         private readonly Button startButton = new Button();
         private readonly Button stopButton = new Button();
         private readonly GameMonitor monitor;
@@ -563,7 +590,7 @@ namespace QbeeGameSpeedLimiter
         public MainForm()
         {
             config = ConfigStore.Load();
-            monitor = new GameMonitor(SetStatusSafe);
+            monitor = new GameMonitor(SetStatusSafe, SetDetectedGameSafe);
             Text = "qbee Game Speed Limiter";
             MinimumSize = new Size(760, 560);
             Size = new Size(820, 600);
@@ -581,10 +608,11 @@ namespace QbeeGameSpeedLimiter
                 Dock = DockStyle.Fill,
                 Padding = new Padding(18),
                 ColumnCount = 1,
-                RowCount = 3
+                RowCount = 4
             };
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 168));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
             Controls.Add(root);
 
@@ -656,6 +684,12 @@ namespace QbeeGameSpeedLimiter
             folderButtons.Controls.Add(removeButton);
             folderButtons.Controls.Add(openButton);
 
+            detectedLabel.Text = "当前检测到：无";
+            detectedLabel.Dock = DockStyle.Fill;
+            detectedLabel.TextAlign = ContentAlignment.MiddleLeft;
+            detectedLabel.AutoEllipsis = true;
+            root.Controls.Add(detectedLabel, 0, 2);
+
             var actions = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -666,7 +700,7 @@ namespace QbeeGameSpeedLimiter
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
             actions.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-            root.Controls.Add(actions, 0, 2);
+            root.Controls.Add(actions, 0, 3);
 
             statusLabel.Text = "就绪";
             statusLabel.Dock = DockStyle.Fill;
@@ -815,6 +849,20 @@ namespace QbeeGameSpeedLimiter
             else
             {
                 statusLabel.Text = text;
+            }
+        }
+
+        private void SetDetectedGameSafe(string path)
+        {
+            var text = string.IsNullOrWhiteSpace(path) ? "当前检测到：无" : "当前检测到：" + path;
+            if (IsDisposed) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)(() => detectedLabel.Text = text));
+            }
+            else
+            {
+                detectedLabel.Text = text;
             }
         }
 

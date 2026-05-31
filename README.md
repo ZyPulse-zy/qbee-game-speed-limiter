@@ -8,6 +8,8 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Supports multiple game folders.
 - Can auto-scan local Steam, Epic, GOG, WeGame, XboxGames, and common game folders.
 - Keeps an optional manual process-name list for games outside the libraries.
+- Shows the currently detected executable so stuck monitoring can be diagnosed.
+- Ignores common runtime/launcher/installer folders inside game libraries.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - Includes a prebuilt Windows executable.
@@ -45,6 +47,8 @@ The included config is set to:
   "game_processes": [],
   "exclude_processes": [
     "steam.exe",
+    "steamservice.exe",
+    "steamwebhelper.exe",
     "epicgameslauncher.exe",
     "goggalaxy.exe",
     "wegame.exe",

@@ -1,5 +1,5 @@
 ﻿{
-  "qbee_url": "http://127.0.0.1:8080",
+  "qbee_url": "http://localhost:8080",
   "username": "suyuen",
   "password": "",
   "game_folders": [
@@ -11,10 +11,23 @@
   ],
   "exclude_processes": [
     "steam.exe",
+    "steamservice.exe",
+    "steamwebhelper.exe",
     "epicgameslauncher.exe",
     "goggalaxy.exe",
     "wegame.exe",
     "battle.net.exe"
+  ],
+  "exclude_path_keywords": [
+    "\\steamapps\\common\\steamworks shared\\",
+    "\\steamapps\\common\\proton ",
+    "\\steamapps\\common\\steam linux runtime",
+    "\\_commonredist\\",
+    "\\redist\\",
+    "\\redistributable\\",
+    "\\installer\\",
+    "\\uninstall\\",
+    "\\launcher\\"
   ],
   "check_interval_seconds": 3,
   "restore_on_exit": true,
