@@ -1182,8 +1182,11 @@ unsafe extern "system" fn wnd_proc(
         WM_ERASEBKGND => {
             APP.with(|slot| {
                 if let Some(app) = slot.borrow().as_ref() {
+                    let Ok(app) = app.try_borrow() else {
+                        return;
+                    };
                     let hdc = wparam as HDC;
-                    let handles = &app.borrow().handles;
+                    let handles = &app.handles;
                     let mut rect = RECT {
                         left: 0,
                         top: 0,
@@ -1216,7 +1219,7 @@ unsafe extern "system" fn wnd_proc(
             APP.with(|slot| {
                 slot.borrow()
                     .as_ref()
-                    .map(|app| app.borrow().handles.bg as isize)
+                    .and_then(|app| app.try_borrow().ok().map(|app| app.handles.bg as isize))
                     .unwrap_or(0)
             })
         }
@@ -1227,7 +1230,7 @@ unsafe extern "system" fn wnd_proc(
             APP.with(|slot| {
                 slot.borrow()
                     .as_ref()
-                    .map(|app| app.borrow().handles.input as isize)
+                    .and_then(|app| app.try_borrow().ok().map(|app| app.handles.input as isize))
                     .unwrap_or(0)
             })
         }

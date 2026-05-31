@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.1.6
+
+- Fixed a Rust UI re-entrant borrow crash that could close the app after clicking `Test connection`.
+
 ## v0.1.5
 
 - Rewrote the desktop app in Rust while keeping native Win32 controls for low idle memory usage.

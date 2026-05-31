@@ -4,7 +4,7 @@
 
 Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
-Latest release: [v0.1.5](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.5)
+Latest release: [v0.1.6](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.6)
 
 ## Features
 
@@ -29,7 +29,7 @@ Latest release: [v0.1.5](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 ## Download
 
 Download the latest Windows package from [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
-Tagged versions such as `v0.1.5` are packaged automatically by the Release workflow.
+Tagged versions such as `v0.1.6` are packaged automatically by the Release workflow.
 
 The packaged artifact contains:
 
