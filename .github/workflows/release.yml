@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build executable
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item qbee_game_speed_limiter.exe dist\
+          Copy-Item qbee_game_speed_limiter.example.json dist\qbee_game_speed_limiter.json
+          Copy-Item README.md dist\
+          Copy-Item docs\USER_GUIDE.zh-CN.md dist\
+          Copy-Item LICENSE dist\
+          Compress-Archive -Path dist\* -DestinationPath qbee-game-speed-limiter-windows.zip -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: qbee-game-speed-limiter-windows.zip

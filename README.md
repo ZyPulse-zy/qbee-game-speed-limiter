@@ -13,7 +13,21 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Reads Steam app manifests and filters common non-game app names such as tools, servers, SDKs, runtimes, benchmarks, and Wallpaper Engine.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
-- Includes a prebuilt Windows executable.
+- GitHub Actions builds a Windows executable artifact.
+
+## Download
+
+Download the latest Windows build from the repository's GitHub Actions artifacts or Releases.
+Tagged versions such as `v1.0.0` are packaged automatically by the Release workflow.
+
+The packaged artifact contains:
+
+- `qbee_game_speed_limiter.exe`
+- `qbee_game_speed_limiter.json`
+- `README.md`
+- `USER_GUIDE.zh-CN.md`
+
+Chinese guide: [`docs/USER_GUIDE.zh-CN.md`](docs/USER_GUIDE.zh-CN.md)
 
 ## Default Game Libraries
 
@@ -36,11 +50,13 @@ The included config is set to:
 
 ## Config
 
+The repository tracks `qbee_game_speed_limiter.example.json`. Your local `qbee_game_speed_limiter.json` is ignored by Git because it may contain private Web UI credentials.
+
 ```json
 {
   "qbee_url": "http://127.0.0.1:8080",
   "username": "admin",
-  "password": "adminadmin",
+  "password": "",
   "game_folders": [
     "C:\\Program Files (x86)\\Steam\\steamapps",
     "D:\\SteamLibrary\\steamapps"
@@ -69,6 +85,8 @@ The included config is set to:
 
 The main desktop app is implemented with .NET Framework WinForms in `QbeeGameSpeedLimiter.cs`.
 `qbee_game_speed_limiter.py` is kept as a script-friendly legacy version.
+
+The build writes `qbee_game_speed_limiter.exe` in the project folder. The executable is ignored by Git; publish it through GitHub Releases or Actions artifacts instead of committing it.
 
 ## Notes
 
