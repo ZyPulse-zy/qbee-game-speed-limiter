@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.1.2
+
+- Preserve user-enabled qBittorrent alternative speed limits instead of disabling them after games exit.
+- Keep UI controls in sync when the monitor exits because of an error.
+- Run game library auto-scan in the background so the window stays responsive.
+- Prevent multiple app instances from running at the same time.
+- Validate qB Web UI URL and game folder configuration before saving or starting monitoring.
+
 ## v0.1.1
 
 - Reduced background overhead by caching game folders and process executable paths during monitoring.

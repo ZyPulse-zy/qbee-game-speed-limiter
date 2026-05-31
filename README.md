@@ -14,6 +14,8 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Ignores common runtime/launcher/installer folders inside game libraries.
 - Reads Steam app manifests and filters common non-game app names such as tools, servers, SDKs, runtimes, benchmarks, and Wallpaper Engine.
 - Can register itself for current-user Windows startup and auto-start monitoring when launched.
+- Preserves alternative speed limits if they were already enabled before a game started.
+- Prevents duplicate app instances from competing with each other.
 - Uses cached process detection to keep background CPU usage low.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.

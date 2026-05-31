@@ -354,14 +354,16 @@ namespace QbeeGameSpeedLimiter
     {
         private readonly Action<string> onStatus;
         private readonly Action<string> onDetectedGame;
+        private readonly Action onStopped;
         private readonly ManualResetEvent stopSignal = new ManualResetEvent(false);
         private Thread worker;
         private bool stopping;
 
-        public GameMonitor(Action<string> onStatus, Action<string> onDetectedGame)
+        public GameMonitor(Action<string> onStatus, Action<string> onDetectedGame, Action onStopped)
         {
             this.onStatus = onStatus;
             this.onDetectedGame = onDetectedGame;
+            this.onStopped = onStopped;
         }
 
         public bool IsRunning
@@ -394,6 +396,7 @@ namespace QbeeGameSpeedLimiter
             var client = new QbeeClient(config);
             var detector = new GameProcessDetector(config);
             bool? lastGameState = null;
+            var appEnabledSpeedLimits = false;
             var lastDetectedGame = "";
             var lastPublishedDetectedGame = "";
             var lastStillRunningLog = DateTime.MinValue;
@@ -418,17 +421,35 @@ namespace QbeeGameSpeedLimiter
                     {
                         if (gameRunning)
                         {
-                            var changed = client.SetSpeedLimits(true);
-                            var message = changed ? "检测到游戏运行，已打开备用速度限制。" : "检测到游戏运行，备用速度限制已是打开状态。";
+                            var alreadyEnabled = client.SpeedLimitsEnabled();
+                            if (!alreadyEnabled)
+                            {
+                                client.SetSpeedLimits(true);
+                                appEnabledSpeedLimits = true;
+                            }
+                            else
+                            {
+                                appEnabledSpeedLimits = false;
+                            }
+
+                            var message = alreadyEnabled ? "检测到游戏运行，备用速度限制原本已打开，本次不会在退出后强制关闭。" : "检测到游戏运行，已打开备用速度限制。";
                             Log(config, message + " Detected: " + detectedGame);
                             onStatus(message);
                         }
                         else if (lastGameState != null)
                         {
-                            var changed = client.SetSpeedLimits(false);
-                            var message = changed ? "检测到游戏退出，已关闭备用速度限制。" : "检测到游戏退出，备用速度限制已是关闭状态。";
+                            var changed = false;
+                            if (appEnabledSpeedLimits)
+                            {
+                                changed = client.SetSpeedLimits(false);
+                            }
+
+                            var message = appEnabledSpeedLimits
+                                ? (changed ? "检测到游戏退出，已关闭备用速度限制。" : "检测到游戏退出，备用速度限制已是关闭状态。")
+                                : "检测到游戏退出，保留原本已打开的备用速度限制。";
                             Log(config, message);
                             onStatus(message);
+                            appEnabledSpeedLimits = false;
                         }
 
                         lastGameState = gameRunning;
@@ -458,18 +479,19 @@ namespace QbeeGameSpeedLimiter
             finally
             {
                 onDetectedGame("");
-                if (config.restore_on_exit)
+                if (config.restore_on_exit && appEnabledSpeedLimits)
                 {
                     try
                     {
                         client.SetSpeedLimits(false);
-                        Log(config, "Program exited. Tried to disable alternative speed limits.");
+                        Log(config, "Program exited. Disabled alternative speed limits that this app enabled.");
                     }
                     catch (Exception error)
                     {
                         Log(config, "Failed to disable alternative speed limits on exit: " + error.Message);
                     }
                 }
+                onStopped();
             }
         }
 
@@ -828,7 +850,7 @@ namespace QbeeGameSpeedLimiter
         public MainForm()
         {
             config = ConfigStore.Load();
-            monitor = new GameMonitor(SetStatusSafe, SetDetectedGameSafe);
+            monitor = new GameMonitor(SetStatusSafe, SetDetectedGameSafe, SetStoppedSafe);
             Text = "qbee Game Speed Limiter";
             MinimumSize = new Size(860, 620);
             Size = new Size(920, 680);
@@ -1135,9 +1157,25 @@ namespace QbeeGameSpeedLimiter
             }
         }
 
-        private void SaveFromUi()
+        private bool SaveFromUi()
         {
-            config.qbee_url = urlBox.Text.Trim();
+            var url = urlBox.Text.Trim();
+            Uri parsedUrl;
+            if (!Uri.TryCreate(url, UriKind.Absolute, out parsedUrl) ||
+                (parsedUrl.Scheme != Uri.UriSchemeHttp && parsedUrl.Scheme != Uri.UriSchemeHttps))
+            {
+                MessageBox.Show(this, "请输入有效的 qB Web UI 地址，例如 http://127.0.0.1:8080。", "配置不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                urlBox.Focus();
+                return false;
+            }
+
+            if (folderList.Items.Count == 0)
+            {
+                MessageBox.Show(this, "请至少添加一个游戏库文件夹，或点击“自动扫描”。", "配置不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+
+            config.qbee_url = url;
             config.username = usernameBox.Text.Trim();
             config.password = passwordBox.Text;
             config.check_interval_seconds = Convert.ToInt32(intervalBox.Value);
@@ -1155,8 +1193,10 @@ namespace QbeeGameSpeedLimiter
                 startWithWindowsBox.Checked = StartupManager.IsEnabled();
                 config.start_with_windows = startWithWindowsBox.Checked;
                 ConfigStore.Save(config);
+                return false;
             }
             statusLabel.Text = "已保存";
+            return true;
         }
 
         private void AddFolder()
@@ -1178,20 +1218,35 @@ namespace QbeeGameSpeedLimiter
 
         private void ScanFolders()
         {
-            var found = GameLibraryScanner.Scan();
-            var existing = new HashSet<string>(folderList.Items.Cast<string>(), StringComparer.OrdinalIgnoreCase);
-            var added = 0;
-
-            foreach (var folder in found)
+            statusLabel.Text = "正在扫描游戏库...";
+            ThreadPool.QueueUserWorkItem(delegate
             {
-                if (existing.Add(folder))
+                try
                 {
-                    folderList.Items.Add(folder);
-                    added++;
-                }
-            }
+                    var found = GameLibraryScanner.Scan();
+                    if (IsDisposed) return;
+                    BeginInvoke((Action)(() =>
+                    {
+                        var existing = new HashSet<string>(folderList.Items.Cast<string>(), StringComparer.OrdinalIgnoreCase);
+                        var added = 0;
 
-            statusLabel.Text = added > 0 ? "自动扫描完成，新增 " + added + " 个游戏库。" : "自动扫描完成，没有发现新的游戏库。";
+                        foreach (var folder in found)
+                        {
+                            if (existing.Add(folder))
+                            {
+                                folderList.Items.Add(folder);
+                                added++;
+                            }
+                        }
+
+                        statusLabel.Text = added > 0 ? "自动扫描完成，新增 " + added + " 个游戏库。" : "自动扫描完成，没有发现新的游戏库。";
+                    }));
+                }
+                catch (Exception error)
+                {
+                    SetStatusSafe("自动扫描失败：" + error.Message);
+                }
+            });
         }
 
         private void RemoveFolder()
@@ -1206,7 +1261,7 @@ namespace QbeeGameSpeedLimiter
 
         private void TestConnection()
         {
-            SaveFromUi();
+            if (!SaveFromUi()) return;
             statusLabel.Text = "正在测试连接...";
             ThreadPool.QueueUserWorkItem(delegate
             {
@@ -1226,7 +1281,7 @@ namespace QbeeGameSpeedLimiter
 
         private void StartMonitor()
         {
-            SaveFromUi();
+            if (!SaveFromUi()) return;
             monitor.Start(config);
             startButton.Enabled = false;
             stopButton.Enabled = true;
@@ -1268,6 +1323,19 @@ namespace QbeeGameSpeedLimiter
             }
         }
 
+        private void SetStoppedSafe()
+        {
+            if (IsDisposed) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke((Action)SetStoppedSafe);
+                return;
+            }
+
+            startButton.Enabled = true;
+            stopButton.Enabled = false;
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             if (monitor.IsRunning)
@@ -1289,9 +1357,19 @@ namespace QbeeGameSpeedLimiter
         [STAThread]
         public static void Main()
         {
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
+            bool createdNew;
+            using (var mutex = new Mutex(true, "QbeeGameSpeedLimiter.SingleInstance", out createdNew))
+            {
+                if (!createdNew)
+                {
+                    MessageBox.Show("qbee 游戏限速助手已经在运行。", "qbee Game Speed Limiter", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new MainForm());
+            }
         }
     }
 }
