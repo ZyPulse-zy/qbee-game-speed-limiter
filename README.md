@@ -20,6 +20,7 @@ Latest release: [v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 - Prevents duplicate app instances from competing with each other.
 - Uses cached process detection to keep background CPU usage low.
 - Runs game library auto-scan in the background so the UI stays responsive.
+- Stops monitoring in the background so the window does not freeze while qBittorrent API calls finish.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - GitHub Actions builds a Windows executable artifact.

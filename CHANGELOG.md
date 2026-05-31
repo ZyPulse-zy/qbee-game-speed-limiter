@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.1.3
+
+- Stop monitoring from a background worker so the UI no longer freezes while qBittorrent API calls finish.
+- Shorten qBittorrent Web API timeout from 10 seconds to 5 seconds.
+
 ## v0.1.2
 
 - Preserve user-enabled qBittorrent alternative speed limits instead of disabling them after games exit.

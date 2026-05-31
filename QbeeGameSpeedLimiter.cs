@@ -328,7 +328,8 @@ namespace QbeeGameSpeedLimiter
             request.CookieContainer = cookies;
             request.Referer = baseUrl;
             request.UserAgent = "qbee-game-speed-limiter/3.0";
-            request.Timeout = 10000;
+            request.Timeout = 5000;
+            request.ReadWriteTimeout = 5000;
 
             if (body != null)
             {
@@ -387,7 +388,7 @@ namespace QbeeGameSpeedLimiter
             stopSignal.Set();
             if (worker != null && worker.IsAlive)
             {
-                worker.Join(5000);
+                worker.Join(2000);
             }
         }
 
@@ -846,6 +847,8 @@ namespace QbeeGameSpeedLimiter
         private readonly Button stopButton = new Button();
         private readonly GameMonitor monitor;
         private AppConfig config;
+        private bool stoppingMonitor;
+        private bool closingAfterStop;
 
         public MainForm()
         {
@@ -1290,10 +1293,15 @@ namespace QbeeGameSpeedLimiter
 
         private void StopMonitor()
         {
-            monitor.Stop();
-            startButton.Enabled = true;
             stopButton.Enabled = false;
-            statusLabel.Text = "已停止";
+            startButton.Enabled = false;
+            stoppingMonitor = true;
+            statusLabel.Text = "正在停止监控...";
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                monitor.Stop();
+                SetStatusSafe("已停止");
+            });
         }
 
         private void SetStatusSafe(string text)
@@ -1334,19 +1342,45 @@ namespace QbeeGameSpeedLimiter
 
             startButton.Enabled = true;
             stopButton.Enabled = false;
+            stoppingMonitor = false;
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            if (monitor.IsRunning)
+            if (monitor.IsRunning && !closingAfterStop)
             {
+                if (stoppingMonitor)
+                {
+                    e.Cancel = true;
+                    statusLabel.Text = "正在停止监控，请稍等...";
+                    return;
+                }
+
                 var result = MessageBox.Show(this, "监控仍在运行。要停止监控并退出吗？", "退出", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (result != DialogResult.Yes)
                 {
                     e.Cancel = true;
                     return;
                 }
-                monitor.Stop();
+                e.Cancel = true;
+                stoppingMonitor = true;
+                startButton.Enabled = false;
+                stopButton.Enabled = false;
+                statusLabel.Text = "正在停止监控，完成后会自动退出...";
+                ThreadPool.QueueUserWorkItem(delegate
+                {
+                    monitor.Stop();
+                    if (!IsDisposed)
+                    {
+                        BeginInvoke((Action)(() =>
+                        {
+                            closingAfterStop = true;
+                            stoppingMonitor = false;
+                            Close();
+                        }));
+                    }
+                });
+                return;
             }
             base.OnFormClosing(e);
         }
