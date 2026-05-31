@@ -1,0 +1,20 @@
+{
+  "qbee_url": "http://127.0.0.1:8080",
+  "username": "admin",
+  "password": "adminadmin",
+  "game_folders": [
+    "C:\\Program Files (x86)\\Steam\\steamapps",
+    "D:\\SteamLibrary\\steamapps"
+  ],
+  "game_processes": [],
+  "exclude_processes": [
+    "steam.exe",
+    "epicgameslauncher.exe",
+    "goggalaxy.exe",
+    "wegame.exe",
+    "battle.net.exe"
+  ],
+  "check_interval_seconds": 3,
+  "restore_on_exit": true,
+  "log_file": "qbee_game_speed_limiter.log"
+}
