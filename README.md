@@ -1,6 +1,6 @@
 # qbee Game Speed Limiter
 
-Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your Steam game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
+Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
 ## Features
 
@@ -8,6 +8,7 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your St
 - Supports multiple game folders.
 - Keeps an optional manual process-name list for games outside the libraries.
 - Uses qBittorrent Web UI API.
+- Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - Includes a prebuilt Windows executable.
 
 ## Default Game Libraries
@@ -25,8 +26,9 @@ The included config is set to:
 
 1. Enable qBittorrent Web UI.
 2. Keep `qbee_game_speed_limiter.exe` and `qbee_game_speed_limiter.json` in the same folder.
-3. Edit `qbee_game_speed_limiter.json` and set your Web UI URL, username, and password.
-4. Run `qbee_game_speed_limiter.exe`.
+3. Run `qbee_game_speed_limiter.exe`.
+4. In the desktop UI, set your Web UI URL, username, password, and game library folders.
+5. Click `Save` and then `Start monitoring`.
 
 ## Config
 
@@ -56,12 +58,15 @@ The included config is set to:
 ## Build
 
 ```powershell
-python -m pip install pyinstaller
-python -m PyInstaller --onefile --console --name qbee_game_speed_limiter qbee_game_speed_limiter.py
+.\build.ps1
 ```
+
+The main desktop app is implemented with .NET Framework WinForms in `QbeeGameSpeedLimiter.cs`.
+`qbee_game_speed_limiter.py` is kept as a script-friendly legacy version.
 
 ## Notes
 
 - qBittorrent must be running.
 - Web UI credentials must be correct.
 - The executable does not bundle your config. Keep the JSON file beside the EXE.
+- Passwords are stored in the local JSON config file as plain text.
