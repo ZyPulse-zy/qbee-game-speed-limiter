@@ -1,5 +1,7 @@
 # qbee Game Speed Limiter
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
 ## Features
