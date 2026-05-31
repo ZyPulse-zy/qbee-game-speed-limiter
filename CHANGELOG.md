@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.1
+
 - Reduced background overhead by caching game folders and process executable paths during monitoring.
 - Refreshed the WinForms UI with a cleaner header, card layout, and styled controls.
 - Changed the default check interval from 3 seconds to 5 seconds.
