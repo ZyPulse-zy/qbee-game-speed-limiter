@@ -4,6 +4,8 @@
 
 Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
+Latest release: [v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.2)
+
 ## Features
 
 - Detects running games by executable path under configured game library folders.
@@ -17,14 +19,15 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Preserves alternative speed limits if they were already enabled before a game started.
 - Prevents duplicate app instances from competing with each other.
 - Uses cached process detection to keep background CPU usage low.
+- Runs game library auto-scan in the background so the UI stays responsive.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - GitHub Actions builds a Windows executable artifact.
 
 ## Download
 
-Download the latest Windows build from the repository's GitHub Actions artifacts or Releases.
-Tagged versions such as `v1.0.0` are packaged automatically by the Release workflow.
+Download the latest Windows package from [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
+Tagged versions such as `v0.1.2` are packaged automatically by the Release workflow.
 
 The packaged artifact contains:
 
@@ -52,7 +55,16 @@ The included config is set to:
 2. Keep `qbee_game_speed_limiter.exe` and `qbee_game_speed_limiter.json` in the same folder.
 3. Run `qbee_game_speed_limiter.exe`.
 4. In the desktop UI, set your Web UI URL, username, password, and game library folders.
-5. Click `Save` and then `Start monitoring`.
+5. Click `Auto scan` to find local game libraries, or add folders manually.
+6. Optional: enable Windows startup and auto-start monitoring.
+7. Click `Save` and then `Start monitoring`.
+
+## Behavior Notes
+
+- The app only disables alternative speed limits when it was the one that enabled them.
+- If alternative speed limits were already enabled before a game started, the app keeps them enabled after the game exits.
+- Only one app instance can run at a time.
+- The default detection interval is 5 seconds. Increase `check_interval_seconds` to reduce background activity further, or decrease it for faster reactions.
 
 ## Config
 

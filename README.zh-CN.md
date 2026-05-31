@@ -4,6 +4,8 @@
 
 这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭。
 
+最新版下载：[v0.1.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.2)
+
 ## 功能
 
 - 根据游戏库中的运行进程自动判断是否正在玩游戏。
@@ -19,11 +21,12 @@
 - 如果备用速度限制原本就是打开的，游戏退出后会保持打开，不会误关。
 - 阻止重复打开多个程序实例，避免互相抢状态。
 - 使用缓存式进程检测，降低后台 CPU 占用。
+- 游戏库自动扫描会在后台执行，扫描时界面不会卡住。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载
 
-请从 GitHub Actions 构建产物或 Releases 下载最新版 Windows 包。
+请从 [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases) 下载最新版 Windows 包。
 
 打包内容包括：
 
@@ -42,7 +45,15 @@
 3. 双击运行 `qbee_game_speed_limiter.exe`。
 4. 在界面中填写 qB Web UI 地址、用户名、密码和游戏库目录。
 5. 点击“自动扫描”查找本机游戏库，也可以手动添加目录。
-6. 点击“保存配置”，再点击“开始监控”。
+6. 如果需要，勾选“开机自启动”和“启动后自动开始监控”。
+7. 点击“保存配置”，再点击“开始监控”。
+
+## 行为说明
+
+- 程序只会关闭由它自己打开的备用速度限制。
+- 如果游戏启动前备用速度限制已经是打开状态，程序会认为这是你的手动设置，游戏退出后会保持打开。
+- 程序会阻止重复打开多个实例，避免多个窗口互相抢状态。
+- 默认检测间隔是 5 秒。想进一步降低后台占用，可以把 `check_interval_seconds` 调大；想更快响应游戏启动和退出，可以调小。
 
 ## qB Web UI 地址
 
