@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.5
+
+- Rewrote the desktop app in Rust while keeping native Win32 controls for low idle memory usage.
+- Restyled the UI with a Tailwind-inspired minimal card and form layout.
+- Added Cargo-based local and GitHub Actions builds.
+
 ## v0.1.4
 
 - Rewrote the desktop app as a native C++/Win32 program to lower idle memory usage.

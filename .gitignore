@@ -4,6 +4,7 @@ __pycache__/
 *.zip
 build/
 dist/
+target/
 *.spec
 qbee_game_speed_limiter.exe
 qbee_game_speed_limiter.json
