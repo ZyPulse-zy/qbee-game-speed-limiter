@@ -10,6 +10,7 @@ Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your ga
 - Keeps an optional manual process-name list for games outside the libraries.
 - Shows the currently detected executable so stuck monitoring can be diagnosed.
 - Ignores common runtime/launcher/installer folders inside game libraries.
+- Reads Steam app manifests and filters common non-game app names such as tools, servers, SDKs, runtimes, benchmarks, and Wallpaper Engine.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - Includes a prebuilt Windows executable.

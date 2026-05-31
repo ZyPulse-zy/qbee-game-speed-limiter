@@ -1,18 +1,19 @@
-﻿{
-  "qbee_url": "http://localhost:8080",
-  "username": "suyuen",
+{
+  "qbee_url": "http://127.0.0.1:8080",
+  "username": "admin",
   "password": "",
   "game_folders": [
     "C:\\Program Files (x86)\\Steam\\steamapps",
     "D:\\SteamLibrary\\steamapps"
   ],
-  "game_processes": [
-    
-  ],
+  "game_processes": [],
   "exclude_processes": [
     "steam.exe",
     "steamservice.exe",
     "steamwebhelper.exe",
+    "wallpaper32.exe",
+    "wallpaper64.exe",
+    "wallpaper_engine.exe",
     "epicgameslauncher.exe",
     "goggalaxy.exe",
     "wegame.exe",
@@ -27,7 +28,24 @@
     "\\redistributable\\",
     "\\installer\\",
     "\\uninstall\\",
-    "\\launcher\\"
+    "\\launcher\\",
+    "\\wallpaper_engine\\"
+  ],
+  "exclude_steam_app_keywords": [
+    "wallpaper",
+    "dedicated server",
+    "server tool",
+    "server dedicated",
+    "sdk",
+    "tool",
+    "tools",
+    "benchmark",
+    "editor",
+    "modding",
+    "workshop",
+    "proton",
+    "redistributable",
+    "runtime"
   ],
   "check_interval_seconds": 3,
   "restore_on_exit": true,

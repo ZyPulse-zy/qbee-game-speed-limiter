@@ -23,6 +23,7 @@ namespace QbeeGameSpeedLimiter
         public List<string> game_processes { get; set; }
         public List<string> exclude_processes { get; set; }
         public List<string> exclude_path_keywords { get; set; }
+        public List<string> exclude_steam_app_keywords { get; set; }
         public int check_interval_seconds { get; set; }
         public bool restore_on_exit { get; set; }
         public string log_file { get; set; }
@@ -45,6 +46,9 @@ namespace QbeeGameSpeedLimiter
                     "steam.exe",
                     "steamservice.exe",
                     "steamwebhelper.exe",
+                    "wallpaper32.exe",
+                    "wallpaper64.exe",
+                    "wallpaper_engine.exe",
                     "epicgameslauncher.exe",
                     "goggalaxy.exe",
                     "wegame.exe",
@@ -60,7 +64,25 @@ namespace QbeeGameSpeedLimiter
                     @"\redistributable\",
                     @"\installer\",
                     @"\uninstall\",
-                    @"\launcher\"
+                    @"\launcher\",
+                    @"\wallpaper_engine\"
+                },
+                exclude_steam_app_keywords = new List<string>
+                {
+                    "wallpaper",
+                    "dedicated server",
+                    "server tool",
+                    "server dedicated",
+                    "sdk",
+                    "tool",
+                    "tools",
+                    "benchmark",
+                    "editor",
+                    "modding",
+                    "workshop",
+                    "proton",
+                    "redistributable",
+                    "runtime"
                 },
                 check_interval_seconds = 3,
                 restore_on_exit = true,
@@ -95,6 +117,7 @@ namespace QbeeGameSpeedLimiter
             if (config.game_processes == null) config.game_processes = defaults.game_processes;
             if (config.exclude_processes == null) config.exclude_processes = defaults.exclude_processes;
             if (config.exclude_path_keywords == null) config.exclude_path_keywords = defaults.exclude_path_keywords;
+            if (config.exclude_steam_app_keywords == null) config.exclude_steam_app_keywords = defaults.exclude_steam_app_keywords;
             if (config.check_interval_seconds < 1) config.check_interval_seconds = defaults.check_interval_seconds;
             if (string.IsNullOrWhiteSpace(config.log_file)) config.log_file = defaults.log_file;
 
@@ -438,10 +461,7 @@ namespace QbeeGameSpeedLimiter
 
         private static string DetectRunningGame(AppConfig config)
         {
-            var folders = (config.game_folders ?? new List<string>())
-                .Where(item => !string.IsNullOrWhiteSpace(item))
-                .Select(NormalizePath)
-                .ToList();
+            var folders = BuildDetectionFolders(config);
             var processNames = new HashSet<string>(
                 (config.game_processes ?? new List<string>()).Select(item => item.ToLowerInvariant()));
             var excluded = new HashSet<string>(
@@ -468,6 +488,69 @@ namespace QbeeGameSpeedLimiter
             }
 
             return null;
+        }
+
+        private static List<string> BuildDetectionFolders(AppConfig config)
+        {
+            var configured = (config.game_folders ?? new List<string>())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(NormalizePath)
+                .ToList();
+
+            var steamAppKeywords = (config.exclude_steam_app_keywords ?? new List<string>())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .Select(item => item.ToLowerInvariant())
+                .ToList();
+
+            var expanded = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var folder in configured)
+            {
+                if (Path.GetFileName(folder).Equals("steamapps", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var appFolder in SteamInstalledAppFolders(folder, steamAppKeywords))
+                    {
+                        expanded.Add(appFolder);
+                    }
+                }
+                else
+                {
+                    expanded.Add(folder);
+                }
+            }
+
+            return expanded.ToList();
+        }
+
+        private static IEnumerable<string> SteamInstalledAppFolders(string steamappsFolder, List<string> excludeKeywords)
+        {
+            foreach (var manifest in Directory.GetFiles(steamappsFolder, "appmanifest_*.acf"))
+            {
+                string text;
+                try
+                {
+                    text = File.ReadAllText(manifest);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                var name = ExtractAcfValue(text, "name");
+                var installDir = ExtractAcfValue(text, "installdir");
+                if (string.IsNullOrWhiteSpace(installDir)) continue;
+
+                var haystack = (name + " " + installDir).ToLowerInvariant();
+                if (excludeKeywords.Any(keyword => haystack.Contains(keyword))) continue;
+
+                var appFolder = Path.Combine(steamappsFolder, "common", installDir);
+                if (Directory.Exists(appFolder)) yield return NormalizePath(appFolder);
+            }
+        }
+
+        private static string ExtractAcfValue(string text, string key)
+        {
+            var match = Regex.Match(text, "\"" + Regex.Escape(key) + "\"\\s+\"([^\"]*)\"", RegexOptions.IgnoreCase);
+            return match.Success ? match.Groups[1].Value.Replace(@"\\", @"\") : "";
         }
 
         private static bool IsUnderFolder(string filePath, string folderPath)
