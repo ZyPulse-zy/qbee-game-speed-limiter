@@ -4,9 +4,9 @@
 
 这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭限制。
 
-最新版下载：[v0.2.1](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.1)
+最新版下载：[v0.2.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.2)
 
-## v0.2.1 变化
+## v0.2.2 变化
 
 - 拆分为两个程序：
   - `qbee_limiter_monitor.exe`：无窗口后台监控，负责检测游戏和控制 qB。

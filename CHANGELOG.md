@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.2.2
+
+- Slimmed the Windows release package to only include the two executables, the default config file, Chinese quick-start notes, and the license.
+- Kept developer docs, design notes, and changelog in the GitHub repository instead of shipping them in the end-user zip.
+
 ## v0.2.1
 
 - Fixed GitHub Actions Release builds on newer `windows-latest` runners by letting `msys2/setup-msys2` provide the active MinGW path instead of forcing a stale `C:\msys64` path.
