@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.4
+
+- Reworked the README first screen as a user-facing software landing page.
+- Added clearer positioning for gaming latency, BT/PT downloads, qBittorrent alternative speed limits, and multi-launcher game library support.
+- Added a configuration UI screenshot and a user-facing Release description template.
+
 ## v0.2.3
 
 - Rewrote the Chinese README as a beginner-friendly setup guide.

@@ -1,14 +1,36 @@
-# qbee 游戏限速助手
+# qBittorrent 游戏限速助手
 
 [English](README.md) | 简体中文
 
-这是一个 Windows 小工具。打开游戏时，它会自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”；游戏关闭后，它会自动恢复。
+玩游戏时自动降低 qBittorrent / qBittorrent Enhanced Edition 下载和上传速度，退出游戏后自动恢复。适合一边挂 BT / PT 下载，一边玩联机游戏、语音聊天或直播的 Windows 用户。
 
-最新版下载：[v0.2.3](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.3)
+[立即下载 Windows 版](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [查看第一次使用教程](#第一次使用) · [常见问题](#常见问题)
 
-## 适合谁
+![配置界面截图](docs/config-ui.png)
 
-如果你一边下载 BT，一边玩网游、联机游戏或对网络延迟敏感的游戏，这个工具可以帮你在玩游戏时自动降低 qB 下载/上传速度，退出游戏后再恢复正常。
+## 它解决什么问题？
+
+后台 qBittorrent 正在下载电影、游戏或 PT 资源时，上传和下载可能占满带宽，导致 CS2、Valorant、Minecraft、幻兽帕鲁等联机游戏延迟升高、丢包，语音也可能卡顿。
+
+本工具会在检测到游戏运行时自动打开 qB 的“备用速度限制”，游戏退出后再自动恢复。你不需要每次进游戏前手动切换限速。
+
+## 主要特点
+
+- 支持 Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame 等常见游戏目录。
+- 支持 qBittorrent 与 qBittorrent Enhanced Edition。
+- 支持 Windows 开机自启动。
+- 后台监控独立运行，低占用。
+- 配置界面用完可关，不影响后台监控。
+- 不会覆盖你原本手动开启的备用限速状态。
+- 可自动扫描游戏库，也可以手动添加目录。
+
+## 适合谁使用？
+
+- 一边挂 BT / PT 下载，一边玩网游的玩家。
+- qBittorrent Enhanced Edition 用户。
+- 家庭宽带、NAS、影音下载用户。
+- 经常遇到“后台下载导致游戏延迟飙升”的用户。
+- 想让 qB 自动进入低速模式，但不想每次手动切换的人。
 
 ## 下载哪个文件
 
@@ -114,6 +136,10 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 
 ## 常见问题
 
+### qB 下载为什么会影响游戏延迟？
+
+BT 下载和上传会占用带宽，尤其是上传跑满时，可能导致游戏数据包排队，出现高延迟、丢包、语音卡顿。本工具的作用是自动切换 qBittorrent 备用限速模式，让游戏期间 qB 使用较低速度。
+
 ### 点“测试连接”失败
 
 先在浏览器里打开你填写的地址，例如：
@@ -161,6 +187,10 @@ Steam 游戏请添加 `steamapps` 文件夹；其他平台一般添加装游戏�
 ## 隐私提醒
 
 `qbee_game_speed_limiter.json` 会在本机保存 qB Web UI 地址、用户名和密码。不要把自己的真实配置上传到 GitHub 或发给别人。
+
+## 后续计划
+
+后续更适合截图展示、也更能提升长期使用体验的功能包括：系统托盘图标、当前状态展示、Windows 通知、最近触发记录、每个游戏单独限速值。
 
 ## 开发者
 
