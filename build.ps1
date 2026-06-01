@@ -1,22 +1,25 @@
 $ErrorActionPreference = "Stop"
 
 $cargo = Get-Command cargo -ErrorAction SilentlyContinue
-if (-not $cargo) {
+if ($cargo) {
+    $cargoExe = $cargo.Source
+} else {
     $cargoPath = Join-Path $env:USERPROFILE ".cargo\bin\cargo.exe"
     if (Test-Path $cargoPath) {
-        $cargo = Get-Item $cargoPath
+        $cargoExe = $cargoPath
     }
 }
 
-if (-not $cargo) {
+if (-not $cargoExe) {
     throw "Cannot find cargo. Install Rust from https://rustup.rs/ first."
 }
 
 $target = "x86_64-pc-windows-gnu"
-& $cargo.Source build --release --target $target
+& $cargoExe build --release --target $target --bin qbee-limiter-monitor --bin qbee-limiter-config
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Copy-Item "target\$target\release\qbee-game-speed-limiter.exe" "qbee_game_speed_limiter.exe" -Force
+Copy-Item "target\$target\release\qbee-limiter-monitor.exe" "qbee_limiter_monitor.exe" -Force
+Copy-Item "target\$target\release\qbee-limiter-config.exe" "qbee_limiter_config.exe" -Force

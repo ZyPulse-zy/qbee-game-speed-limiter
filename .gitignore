@@ -8,4 +8,8 @@ target/
 qbee-game-speed-limiter-windows/
 *.spec
 qbee_game_speed_limiter.exe
+qbee_limiter_config.exe
+qbee_limiter_monitor.exe
 qbee_game_speed_limiter.json
+qbee_limiter_status.json
+qbee_limiter_monitor.stop

@@ -38,11 +38,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item qbee_game_speed_limiter.exe dist\
+          Copy-Item qbee_limiter_config.exe dist\
+          Copy-Item qbee_limiter_monitor.exe dist\
           Copy-Item qbee_game_speed_limiter.example.json dist\qbee_game_speed_limiter.json
           Copy-Item README.md dist\
           Copy-Item README.zh-CN.md dist\
           Copy-Item DESIGN.md dist\
+          Copy-Item docs\CONFIG_UI_DESIGN.md dist\
           Copy-Item docs\USER_GUIDE.zh-CN.md dist\
           Copy-Item CHANGELOG.md dist\
           Copy-Item LICENSE dist\

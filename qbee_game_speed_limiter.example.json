@@ -50,6 +50,6 @@
   "check_interval_seconds": 5,
   "restore_on_exit": true,
   "start_with_windows": false,
-  "auto_start_monitor": false,
+  "auto_start_monitor": true,
   "log_file": "qbee_game_speed_limiter.log"
 }

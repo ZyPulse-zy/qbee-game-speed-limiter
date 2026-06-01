@@ -4,28 +4,28 @@
 
 这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭限制。
 
-最新版下载：[v0.1.9](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.9)
+最新版下载：[v0.2.0](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.0)
+
+## v0.2.0 变化
+
+- 拆分为两个程序：
+  - `qbee_limiter_monitor.exe`：无窗口后台监控，负责检测游戏和控制 qB。
+  - `qbee_limiter_config.exe`：本地网页配置界面，只在需要配置时打开。
+- 保存配置后可以自动启动后台监控程序。
+- 开机自启动现在启动后台监控程序，而不是配置界面。
+- 修复 GitHub Actions Release 构建中 Cargo 路径调用失败的问题。
 
 ## 功能
 
 - 根据游戏库中的运行进程自动判断是否正在玩游戏。
 - 支持多个游戏库目录。
-- 支持自动扫描本机 Steam、Epic、GOG、WeGame、XboxGames 和常见游戏目录。
-- 支持手动补充进程名。
-- 界面会显示当前检测到的 exe 路径，方便排查误判。
-- 默认忽略 Steamworks、运行库、安装器、启动器、工具类软件等常见非游戏目录。
+- 支持自动扫描本机 Steam、Epic、GOG、WeGame、XboxGames、Battle.net、EA、Ubisoft 和常见游戏目录。
 - 会读取 Steam `appmanifest_*.acf`，并过滤 Wallpaper Engine、服务器工具、SDK、运行库、基准测试、编辑器等常见非游戏条目。
 - 通过 qBittorrent Web UI API 控制备用速度限制。
-- 提供 Windows 桌面配置界面，可填写 qB Web UI 地址、用户名、密码，并选择游戏库文件夹。
-- 支持当前用户开机自启动，并可在启动后自动开始监控。
 - 如果备用速度限制原本就是打开的，游戏退出后会保持打开，不会误关。
-- 阻止重复打开多个程序实例，避免互相抢状态。
+- 阻止重复打开多个后台监控实例，避免互相抢状态。
 - 使用缓存式进程检测，降低后台 CPU 占用。
-- 游戏库自动扫描和停止监控都会在后台执行，窗口不容易卡住。
-- 已重构为 Rust + 原生 Win32 程序，空闲内存更低。
-- 界面按 [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的设计文档思路整理，使用 DPI 感知的深色、现代、简洁 Linear/Tailwind 风格；项目内有 [`DESIGN.md`](DESIGN.md) 记录设计规则。
-- 状态文字使用标题下方的整行状态栏，按钮会显示“已保存”“监控中”“停止中”等反馈。
-- GitHub Actions 会自动构建 Windows exe。
+- 配置界面按 Linear 风格设计，设计说明见 [`docs/CONFIG_UI_DESIGN.md`](docs/CONFIG_UI_DESIGN.md)。
 
 ## 下载
 
@@ -33,33 +33,33 @@
 
 打包内容包括：
 
-- `qbee_game_speed_limiter.exe`
+- `qbee_limiter_config.exe`
+- `qbee_limiter_monitor.exe`
 - `qbee_game_speed_limiter.json`
 - `README.md`
 - `README.zh-CN.md`
 - `USER_GUIDE.zh-CN.md`
 - `DESIGN.md`
+- `CONFIG_UI_DESIGN.md`
 - `LICENSE`
-
-更详细的中文使用说明见：[docs/USER_GUIDE.zh-CN.md](docs/USER_GUIDE.zh-CN.md)
 
 ## 快速开始
 
 1. 在 qBittorrent/qBEE 中启用 Web UI。
-2. 保持 `qbee_game_speed_limiter.exe` 和 `qbee_game_speed_limiter.json` 在同一目录。
-3. 双击运行 `qbee_game_speed_limiter.exe`。
-4. 在界面中填写 qB Web UI 地址、用户名、密码和游戏库目录。
+2. 保持两个 exe 和 `qbee_game_speed_limiter.json` 在同一目录。
+3. 双击运行 `qbee_limiter_config.exe`。
+4. 在浏览器打开的配置界面中填写 qB Web UI 地址、用户名、密码和游戏库目录。
 5. 点击“自动扫描”查找本机游戏库，也可以手动添加目录。
-6. 如果需要，勾选“开机自启动”和“启动后自动开始监控”。
-7. 点击“保存配置”，再点击“开始监控”。
+6. 勾选“保存后自动启动监控”。
+7. 点击“保存并应用”。
 
 ## 行为说明
 
+- 平时只需要后台 `qbee_limiter_monitor.exe` 常驻。
+- 配置界面可以用完就关，不影响后台监控。
 - 程序只会关闭由它自己打开的备用速度限制。
 - 如果游戏启动前备用速度限制已经是打开状态，程序会认为这是你的手动设置，游戏退出后会保持打开。
-- 程序会阻止重复打开多个实例，避免多个窗口互相抢状态。
 - 默认检测间隔是 5 秒。想进一步降低后台占用，可以把 `check_interval_seconds` 调大；想更快响应游戏启动和退出，可以调小。
-- Rust 原生版本在开发机空闲实测约 14.4 MB 工作集、2.2 MB 私有内存。
 
 ## qB Web UI 地址
 
@@ -81,22 +81,6 @@ http://[::1]:8080
 http://127.0.0.1:8081
 ```
 
-## 配置
-
-仓库中提交的是示例配置：
-
-```text
-qbee_game_speed_limiter.example.json
-```
-
-你的本地真实配置是：
-
-```text
-qbee_game_speed_limiter.json
-```
-
-真实配置文件会被 Git 忽略，因为里面可能包含 Web UI 用户名和密码。
-
 ## 构建
 
 先安装 Rust 和 MinGW-w64，然后在 Windows 中运行：
@@ -105,26 +89,14 @@ qbee_game_speed_limiter.json
 .\build.ps1
 ```
 
-主程序是 Rust + Win32 应用，源码为：
+构建输出：
 
 ```text
-src/main.rs
+qbee_limiter_config.exe
+qbee_limiter_monitor.exe
 ```
 
-旧的 C++、C# 和 Python 实现仅保留为参考。
-
-## 排查
-
-如果退出游戏后没有自动关闭限制：
-
-1. 查看界面底部“当前检测到”的 exe 路径。
-2. 查看日志：
-
-```text
-qbee_game_speed_limiter.log
-```
-
-如果某个工具类程序被误判，可以把它加入配置中的 `exclude_processes`、`exclude_path_keywords` 或 `exclude_steam_app_keywords`。
+旧的 C++、C#、Python 和 Win32 单窗口实现仅保留为参考。
 
 ## 隐私
 

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.2.0
+
+- Split the app into `qbee_limiter_config.exe` and `qbee_limiter_monitor.exe`.
+- Replaced the always-on native configuration window with a browser-based local configuration UI.
+- Moved long-running game detection and qBittorrent control into a no-window monitor process for lower background memory usage.
+- Saving config can now automatically start the monitor process.
+- Fixed GitHub Actions release builds by calling Cargo through a stable executable path in `build.ps1`.
+
 ## v0.1.9
 
 - Moved status text from the narrow top-right corner to a full-width status row under the title to prevent overlapping.
