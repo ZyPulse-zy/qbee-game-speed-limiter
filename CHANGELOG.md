@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.1.9
+
+- Moved status text from the narrow top-right corner to a full-width status row under the title to prevent overlapping.
+- Added direct button feedback: Save changes to `已保存`, Start changes to `监控中`, and Stop changes to `停止中` while actions are running.
+
 ## v0.1.8
 
 - Made the native UI DPI-aware to avoid blurry Windows bitmap scaling on high-DPI displays.

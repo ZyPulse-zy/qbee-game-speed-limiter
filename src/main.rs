@@ -152,6 +152,7 @@ struct Handles {
     folders: HWND,
     status: HWND,
     detected: HWND,
+    save: HWND,
     start: HWND,
     stop: HWND,
     font: HFONT,
@@ -266,6 +267,10 @@ fn set_text(hwnd: HWND, text: &str) {
     unsafe {
         SetWindowTextW(hwnd, wide(text).as_ptr());
     }
+}
+
+fn set_status(handles: &Handles, text: &str) {
+    set_text(handles.status, &format!("状态：{text}"));
 }
 
 fn post_string(hwnd: HWND, msg: u32, text: String) {
@@ -992,7 +997,7 @@ fn save_from_ui(app: &mut App, show_status: bool) -> bool {
     let _ = save_config(&app.config);
     set_startup_enabled(app.config.start_with_windows);
     if show_status {
-        set_text(handles.status, "已保存");
+        set_status(handles, "已保存");
     }
     true
 }
@@ -1029,8 +1034,18 @@ unsafe extern "system" fn wnd_proc(
                 hwnd,
                 font,
             );
-            let status =
-                create_window_text("STATIC", "就绪", SS_CENTER, 750, 40, 160, 28, 0, hwnd, font);
+            let status = create_window_text(
+                "STATIC",
+                "状态：就绪",
+                SS_LEFT | SS_CENTERIMAGE,
+                34,
+                96,
+                880,
+                28,
+                0,
+                hwnd,
+                font,
+            );
 
             create_window_text(
                 "STATIC",
@@ -1207,7 +1222,7 @@ unsafe extern "system" fn wnd_proc(
                 hwnd,
                 font,
             );
-            create_window_text(
+            let save = create_window_text(
                 "BUTTON",
                 "保存",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
@@ -1257,6 +1272,7 @@ unsafe extern "system" fn wnd_proc(
                 folders,
                 status,
                 detected,
+                save,
                 start,
                 stop,
                 font,
@@ -1344,7 +1360,8 @@ unsafe extern "system" fn wnd_proc(
             let text = Box::from_raw(lparam as *mut String);
             APP.with(|slot| {
                 if let Some(app) = slot.borrow().as_ref() {
-                    set_text(app.borrow().handles.status, &text);
+                    let app = app.borrow();
+                    set_status(&app.handles, &text);
                 }
             });
             0
@@ -1369,6 +1386,9 @@ unsafe extern "system" fn wnd_proc(
                     let app = app_rc.borrow_mut();
                     EnableWindow(app.handles.start, 1);
                     EnableWindow(app.handles.stop, 0);
+                    set_text(app.handles.start, "开始监控");
+                    set_text(app.handles.stop, "停止监控");
+                    set_status(&app.handles, "已停止监控");
                     if app.closing_after_stop {
                         DestroyWindow(app.handles.hwnd);
                     }
@@ -1407,8 +1427,8 @@ unsafe extern "system" fn wnd_proc(
                             added += 1;
                         }
                     }
-                    set_text(
-                        app.handles.status,
+                    set_status(
+                        &app.handles,
                         &format!("自动扫描完成，新增 {added} 个游戏库。"),
                     );
                 }
@@ -1431,7 +1451,8 @@ unsafe extern "system" fn wnd_proc(
                             app.monitor.stop();
                             EnableWindow(app.handles.start, 0);
                             EnableWindow(app.handles.stop, 0);
-                            set_text(app.handles.status, "正在停止监控，完成后退出...");
+                            set_text(app.handles.stop, "停止中");
+                            set_status(&app.handles, "正在停止监控，完成后退出...");
                         }
                         return;
                     }
@@ -1514,7 +1535,8 @@ fn handle_command(app: &mut App, id: isize) {
                 if !save_from_ui(app, false) {
                     return;
                 }
-                set_text(app.handles.status, "正在测试连接...");
+                set_text(app.handles.save, "保存");
+                set_status(&app.handles, "正在测试连接...");
                 let hwnd_value = app.handles.hwnd as isize;
                 let config = app.config.clone();
                 thread::spawn(move || {
@@ -1529,7 +1551,8 @@ fn handle_command(app: &mut App, id: isize) {
                 });
             }
             ID_SCAN => {
-                set_text(app.handles.status, "正在扫描游戏库...");
+                set_text(app.handles.save, "保存");
+                set_status(&app.handles, "正在扫描游戏库...");
                 let hwnd_value = app.handles.hwnd as isize;
                 thread::spawn(move || {
                     let hwnd = hwnd_value as HWND;
@@ -1560,7 +1583,9 @@ fn handle_command(app: &mut App, id: isize) {
                 );
             }
             ID_SAVE => {
-                save_from_ui(app, true);
+                if save_from_ui(app, true) {
+                    set_text(app.handles.save, "已保存");
+                }
             }
             ID_START => {
                 if !save_from_ui(app, false) {
@@ -1568,13 +1593,17 @@ fn handle_command(app: &mut App, id: isize) {
                 }
                 EnableWindow(app.handles.start, 0);
                 EnableWindow(app.handles.stop, 1);
-                set_text(app.handles.status, "监控中");
+                set_text(app.handles.save, "保存");
+                set_text(app.handles.start, "监控中");
+                set_text(app.handles.stop, "停止监控");
+                set_status(&app.handles, "监控中，检测到游戏时会自动开启备用速度限制。");
                 app.monitor.start(app.handles.hwnd, app.config.clone());
             }
             ID_STOP => {
                 EnableWindow(app.handles.start, 0);
                 EnableWindow(app.handles.stop, 0);
-                set_text(app.handles.status, "正在停止监控...");
+                set_text(app.handles.stop, "停止中");
+                set_status(&app.handles, "正在停止监控...");
                 app.monitor.stop();
             }
             _ => {}

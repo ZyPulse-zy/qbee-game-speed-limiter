@@ -4,7 +4,7 @@
 
 Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent's alternative speed limits while a game is running, then disables them after the game closes.
 
-Latest release: [v0.1.8](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.8)
+Latest release: [v0.1.9](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.9)
 
 ## Features
 
@@ -22,6 +22,7 @@ Latest release: [v0.1.8](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 - Runs game library auto-scan and monitor shutdown in the background so the UI stays responsive.
 - Rewritten as a Rust + native Win32 app for low idle memory usage.
 - Uses a DPI-aware dark Linear/Tailwind-inspired native UI documented in [`DESIGN.md`](DESIGN.md), inspired by [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md).
+- Uses a full-width status row and button text changes so actions show visible feedback.
 - Uses qBittorrent Web UI API.
 - Includes a desktop UI for choosing game folders and editing qBittorrent Web UI credentials.
 - GitHub Actions builds a Windows executable artifact.
@@ -29,7 +30,7 @@ Latest release: [v0.1.8](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/r
 ## Download
 
 Download the latest Windows package from [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
-Tagged versions such as `v0.1.8` are packaged automatically by the Release workflow.
+Tagged versions such as `v0.1.9` are packaged automatically by the Release workflow.
 
 The packaged artifact contains:
 
