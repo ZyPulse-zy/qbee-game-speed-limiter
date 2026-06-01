@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.2.5
+
+- Fixed the Start Monitor action reporting success before the background monitor actually became responsive.
+- The config UI now shows a clear failure message if the monitor starts and immediately exits or another old monitor instance is blocking it.
+
 ## v0.2.4
 
 - Reworked the README first screen as a user-facing software landing page.

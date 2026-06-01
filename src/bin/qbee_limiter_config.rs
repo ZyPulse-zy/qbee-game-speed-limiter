@@ -77,7 +77,7 @@ fn handle_client(mut stream: TcpStream, shutdown: Arc<AtomicBool>) {
                 let save = save_config(&config);
                 set_startup_enabled(config.start_with_windows);
                 let start = if config.auto_start_monitor {
-                    start_monitor_process()
+                    start_monitor_process_checked().map(|_| ())
                 } else {
                     Ok(())
                 };
@@ -101,11 +101,11 @@ fn handle_client(mut stream: TcpStream, shutdown: Arc<AtomicBool>) {
             Ok(config) => {
                 let _ = save_config(&config);
                 set_startup_enabled(config.start_with_windows);
-                match start_monitor_process() {
-                    Ok(_) => json_response(&ApiResponse {
+                match start_monitor_process_checked() {
+                    Ok(status) => json_response(&ApiResponse {
                         ok: true,
                         message: "后台监控已启动。".into(),
-                        data: load_status(),
+                        data: status,
                     }),
                     Err(err) => error_response(&err),
                 }
@@ -372,7 +372,7 @@ async function scanLibraries(){
   catch(e){ $('dot').className='dot bad'; log('扫描失败：' + e.message); }
 }
 function addFolder(){ const v=$('folderInput').value.trim(); if(!v) return; const folders = new Set([...document.querySelectorAll('[data-folder]')].map(el=>el.dataset.folder)); folders.add(v); renderFolders([...folders]); $('folderInput').value=''; }
-async function startMonitor(){ setBusy('正在启动监控'); try{ const json = await api('/api/start', configFromForm()); log(json.message); setTimeout(refreshStatus, 800); }catch(e){ $('dot').className='dot bad'; log('启动失败：' + e.message); } }
+async function startMonitor(){ setBusy('正在启动监控'); try{ const json = await api('/api/start', configFromForm()); log(json.message); renderStatus(json.data); }catch(e){ $('headline').textContent='启动监控失败'; $('subline').textContent='请查看右侧错误信息'; $('state').textContent='启动失败'; $('dot').className='dot bad'; log('启动失败：' + e.message); } }
 async function stopMonitor(){ setBusy('正在停止监控'); try{ const json = await api('/api/stop', {}); log(json.message); setTimeout(refreshStatus, 1200); }catch(e){ $('dot').className='dot bad'; log('停止失败：' + e.message); } }
 async function quitApp(){ try{ await api('/api/quit', {}); window.close(); document.body.innerHTML='<main class="shell"><h1>配置器已关闭</h1><p>可以关闭这个标签页。</p></main>'; }catch(e){} }
 async function refreshStatus(){ try{ const json = await api('/api/status'); renderStatus(json.data); }catch(e){} }

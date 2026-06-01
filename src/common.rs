@@ -245,6 +245,19 @@ pub fn start_monitor_process() -> Result<(), String> {
         .map_err(|err| err.to_string())
 }
 
+pub fn start_monitor_process_checked() -> Result<MonitorStatus, String> {
+    start_monitor_process()?;
+    let start = now_unix();
+    for _ in 0..25 {
+        thread::sleep(Duration::from_millis(120));
+        let status = load_status();
+        if status.running && status.updated_at >= start {
+            return Ok(status);
+        }
+    }
+    Err("后台监控启动后没有响应。可能已有旧版本监控程序正在运行，或 qbee_limiter_monitor.exe 启动后立即退出。请在任务管理器结束 qbee_limiter_monitor.exe 后重试，或把新版本解压覆盖到原目录。".into())
+}
+
 pub fn set_startup_enabled(enabled: bool) {
     unsafe {
         let mut key: HKEY = null_mut();
