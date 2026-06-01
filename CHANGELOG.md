@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.1.8
+
+- Made the native UI DPI-aware to avoid blurry Windows bitmap scaling on high-DPI displays.
+- Increased window width and adjusted form spacing so Chinese labels, checkboxes, and action buttons have more room.
+- Changed font creation to negative-height Segoe UI fonts for clearer text rendering.
+
 ## v0.1.7
 
 - Restyled the Rust Win32 UI using a `DESIGN.md`-first workflow inspired by `awesome-design-md`.

@@ -4,7 +4,7 @@
 
 这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭限制。
 
-最新版下载：[v0.1.7](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.7)
+最新版下载：[v0.1.8](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.1.8)
 
 ## 功能
 
@@ -23,7 +23,7 @@
 - 使用缓存式进程检测，降低后台 CPU 占用。
 - 游戏库自动扫描和停止监控都会在后台执行，窗口不容易卡住。
 - 已重构为 Rust + 原生 Win32 程序，空闲内存更低。
-- 界面按 [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的设计文档思路整理，使用深色、现代、简洁的 Linear/Tailwind 风格；项目内有 [`DESIGN.md`](DESIGN.md) 记录设计规则。
+- 界面按 [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的设计文档思路整理，使用 DPI 感知的深色、现代、简洁 Linear/Tailwind 风格；项目内有 [`DESIGN.md`](DESIGN.md) 记录设计规则。
 - GitHub Actions 会自动构建 Windows exe。
 
 ## 下载

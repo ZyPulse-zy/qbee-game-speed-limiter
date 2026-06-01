@@ -61,6 +61,8 @@ const COLOR_PRIMARY: u32 = rgb(99, 102, 241);
 const COLOR_PRIMARY_HOT: u32 = rgb(129, 140, 248);
 const COLOR_BUTTON: u32 = rgb(28, 32, 44);
 const COLOR_BUTTON_DISABLED: u32 = rgb(31, 35, 46);
+const UI_WIDTH: i32 = 960;
+const UI_HEIGHT: i32 = 740;
 
 #[derive(Clone, Serialize, Deserialize)]
 struct AppConfig {
@@ -827,10 +829,10 @@ unsafe fn create_window_text(
         wide(class).as_ptr(),
         wide(text).as_ptr(),
         WS_CHILD | WS_VISIBLE | style,
-        x,
-        y,
-        w,
-        h,
+        ui_scale(x),
+        ui_scale(y),
+        ui_scale(w),
+        ui_scale(h),
         parent,
         id as usize as HMENU,
         GetModuleHandleW(null()),
@@ -842,7 +844,7 @@ unsafe fn create_window_text(
 
 unsafe fn make_font(size: i32, weight: i32) -> HFONT {
     CreateFontW(
-        size,
+        -ui_scale(size),
         0,
         0,
         0,
@@ -857,6 +859,19 @@ unsafe fn make_font(size: i32, weight: i32) -> HFONT {
         DEFAULT_PITCH as u32,
         wide("Segoe UI").as_ptr(),
     )
+}
+
+unsafe fn ui_scale(value: i32) -> i32 {
+    value
+}
+
+unsafe fn ui_rect(left: i32, top: i32, right: i32, bottom: i32) -> RECT {
+    RECT {
+        left: ui_scale(left),
+        top: ui_scale(top),
+        right: ui_scale(right),
+        bottom: ui_scale(bottom),
+    }
 }
 
 unsafe fn draw_panel(hdc: HDC, rect: RECT, brush: HBRUSH) {
@@ -996,87 +1011,87 @@ unsafe extern "system" fn wnd_proc(
             let button = CreateSolidBrush(COLOR_BUTTON);
             let primary = CreateSolidBrush(COLOR_PRIMARY);
             let disabled = CreateSolidBrush(COLOR_BUTTON_DISABLED);
-            let font = make_font(18, FW_NORMAL as i32);
-            let title_font = make_font(31, FW_SEMIBOLD as i32);
+            let font = make_font(15, FW_NORMAL as i32);
+            let title_font = make_font(24, FW_SEMIBOLD as i32);
 
             create_window_text(
-                "STATIC", APP_TITLE, SS_LEFT, 32, 24, 360, 38, 0, hwnd, title_font,
+                "STATIC", APP_TITLE, SS_LEFT, 32, 28, 420, 38, 0, hwnd, title_font,
             );
             create_window_text(
                 "STATIC",
                 "Rust 原生低占用版 · Tailwind 风格简洁布局",
                 SS_LEFT,
                 34,
-                64,
-                520,
+                70,
+                620,
                 24,
                 0,
                 hwnd,
                 font,
             );
             let status =
-                create_window_text("STATIC", "就绪", SS_CENTER, 660, 34, 190, 28, 0, hwnd, font);
+                create_window_text("STATIC", "就绪", SS_CENTER, 750, 40, 160, 28, 0, hwnd, font);
 
             create_window_text(
                 "STATIC",
                 "连接设置",
                 SS_LEFT,
-                40,
-                112,
+                48,
+                134,
                 180,
                 24,
                 0,
                 hwnd,
                 font,
             );
-            create_window_text("STATIC", "地址", SS_LEFT, 54, 152, 56, 24, 0, hwnd, font);
+            create_window_text("STATIC", "地址", SS_LEFT, 58, 178, 56, 24, 0, hwnd, font);
             let url = create_window_text(
                 "EDIT",
                 "",
                 WS_BORDER | ES_AUTOHSCROLL as u32,
-                112,
-                146,
-                720,
-                30,
+                126,
+                170,
+                770,
+                34,
                 ID_URL,
                 hwnd,
                 font,
             );
-            create_window_text("STATIC", "用户名", SS_LEFT, 54, 194, 56, 24, 0, hwnd, font);
+            create_window_text("STATIC", "用户名", SS_LEFT, 58, 226, 58, 24, 0, hwnd, font);
             let user = create_window_text(
                 "EDIT",
                 "",
                 WS_BORDER | ES_AUTOHSCROLL as u32,
-                112,
-                188,
-                260,
-                30,
+                126,
+                218,
+                300,
+                34,
                 ID_USER,
                 hwnd,
                 font,
             );
-            create_window_text("STATIC", "密码", SS_LEFT, 404, 194, 56, 24, 0, hwnd, font);
+            create_window_text("STATIC", "密码", SS_LEFT, 462, 226, 56, 24, 0, hwnd, font);
             let password = create_window_text(
                 "EDIT",
                 "",
                 WS_BORDER | ES_AUTOHSCROLL as u32 | ES_PASSWORD as u32,
-                462,
-                188,
-                260,
-                30,
+                514,
+                218,
+                300,
+                34,
                 ID_PASSWORD,
                 hwnd,
                 font,
             );
-            create_window_text("STATIC", "间隔", SS_LEFT, 54, 236, 56, 24, 0, hwnd, font);
+            create_window_text("STATIC", "间隔", SS_LEFT, 58, 274, 56, 24, 0, hwnd, font);
             let interval = create_window_text(
                 "EDIT",
                 "",
                 WS_BORDER | ES_NUMBER as u32,
-                112,
-                230,
-                70,
-                30,
+                126,
+                266,
+                82,
+                34,
                 ID_INTERVAL,
                 hwnd,
                 font,
@@ -1085,10 +1100,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "测试连接",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                240,
-                228,
-                104,
-                34,
+                238,
+                264,
+                122,
+                38,
                 ID_TEST,
                 hwnd,
                 font,
@@ -1097,10 +1112,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "开机自启动",
                 BS_AUTOCHECKBOX as u32,
-                390,
-                232,
-                130,
-                26,
+                400,
+                270,
+                150,
+                28,
                 ID_STARTUP,
                 hwnd,
                 font,
@@ -1109,24 +1124,24 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "启动后自动开始监控",
                 BS_AUTOCHECKBOX as u32,
-                530,
-                232,
-                220,
-                26,
+                590,
+                270,
+                260,
+                28,
                 ID_AUTOSTART,
                 hwnd,
                 font,
             );
 
-            create_window_text("STATIC", "游戏库", SS_LEFT, 40, 308, 180, 24, 0, hwnd, font);
+            create_window_text("STATIC", "游戏库", SS_LEFT, 48, 374, 180, 24, 0, hwnd, font);
             let folders = create_window_text(
                 "LISTBOX",
                 "",
                 WS_BORDER | LBS_NOTIFY as u32 | WS_VSCROLL | WS_HSCROLL,
-                54,
-                342,
-                638,
-                210,
+                58,
+                410,
+                700,
+                180,
                 ID_FOLDERS,
                 hwnd,
                 font,
@@ -1135,10 +1150,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "自动扫描",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                720,
-                342,
-                112,
-                34,
+                786,
+                410,
+                120,
+                38,
                 ID_SCAN,
                 hwnd,
                 font,
@@ -1147,10 +1162,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "添加",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                720,
-                386,
-                112,
-                34,
+                786,
+                460,
+                120,
+                38,
                 ID_ADD,
                 hwnd,
                 font,
@@ -1159,10 +1174,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "删除",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                720,
-                430,
-                112,
-                34,
+                786,
+                510,
+                120,
+                38,
                 ID_REMOVE,
                 hwnd,
                 font,
@@ -1171,10 +1186,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "打开配置",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                720,
-                474,
-                112,
-                34,
+                786,
+                560,
+                120,
+                38,
                 ID_OPEN_CONFIG,
                 hwnd,
                 font,
@@ -1184,9 +1199,9 @@ unsafe extern "system" fn wnd_proc(
                 "STATIC",
                 "当前检测到：无",
                 SS_LEFT,
-                54,
-                566,
-                780,
+                58,
+                618,
+                820,
                 26,
                 0,
                 hwnd,
@@ -1196,10 +1211,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "保存",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                486,
-                608,
-                100,
-                36,
+                550,
+                664,
+                110,
+                40,
                 ID_SAVE,
                 hwnd,
                 font,
@@ -1208,10 +1223,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "开始监控",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                598,
-                608,
-                112,
-                36,
+                674,
+                664,
+                122,
+                40,
                 ID_START,
                 hwnd,
                 font,
@@ -1220,10 +1235,10 @@ unsafe extern "system" fn wnd_proc(
                 "BUTTON",
                 "停止监控",
                 BS_PUSHBUTTON as u32 | BS_OWNERDRAW as u32,
-                722,
-                608,
-                112,
-                36,
+                810,
+                664,
+                122,
+                40,
                 ID_STOP,
                 hwnd,
                 font,
@@ -1274,26 +1289,11 @@ unsafe extern "system" fn wnd_proc(
                     };
                     let hdc = wparam as HDC;
                     let handles = &app.handles;
-                    let mut rect = RECT {
-                        left: 0,
-                        top: 0,
-                        right: 900,
-                        bottom: 700,
-                    };
+                    let mut rect = ui_rect(0, 0, UI_WIDTH, UI_HEIGHT);
                     FillRect(hdc, &rect, handles.bg);
-                    rect = RECT {
-                        left: 28,
-                        top: 100,
-                        right: 858,
-                        bottom: 276,
-                    };
+                    rect = ui_rect(30, 112, 930, 328);
                     draw_panel(hdc, rect, handles.card);
-                    rect = RECT {
-                        left: 28,
-                        top: 296,
-                        right: 858,
-                        bottom: 558,
-                    };
+                    rect = ui_rect(30, 350, 930, 604);
                     draw_panel(hdc, rect, handles.card);
                 }
             });
@@ -1600,6 +1600,8 @@ unsafe fn add_folder(owner: HWND, list: HWND) {
 
 fn main() {
     unsafe {
+        SetProcessDPIAware();
+
         let mutex = CreateMutexW(
             null(),
             1,
@@ -1643,8 +1645,8 @@ fn main() {
             WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            900,
-            700,
+            ui_scale(UI_WIDTH),
+            ui_scale(UI_HEIGHT),
             null_mut(),
             null_mut(),
             wc.hInstance,
