@@ -29,8 +29,6 @@ jobs:
 
       - name: Build executable
         shell: pwsh
-        env:
-          PATH: C:\msys64\ucrt64\bin;${{ env.PATH }}
         run: .\build.ps1
 
       - name: Prepare artifact

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.2.1
+
+- Fixed GitHub Actions Release builds on newer `windows-latest` runners by letting `msys2/setup-msys2` provide the active MinGW path instead of forcing a stale `C:\msys64` path.
+- Keeps the v0.2.x split architecture: browser-based config UI plus a low-memory Rust background monitor.
+
 ## v0.2.0
 
 - Split the app into `qbee_limiter_config.exe` and `qbee_limiter_monitor.exe`.
