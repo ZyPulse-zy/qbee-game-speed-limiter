@@ -2,70 +2,76 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Windows tool for qBittorrent / qBittorrent Enhanced Edition. It monitors your game libraries and automatically enables qBittorrent alternative speed limits while a game is running, then disables them after the game closes.
+A Windows helper for qBittorrent / qBittorrent Enhanced Edition. When a game is running, it enables qBittorrent alternative speed limits. After the game exits, it restores the previous state.
 
-Latest release: [v0.2.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.2)
-
-## What Changed in v0.2.2
-
-- `qbee_limiter_monitor.exe` is the low-memory background monitor.
-- `qbee_limiter_config.exe` is a modern browser-based local configuration UI.
-- Saving configuration can automatically start the monitor.
-- Windows startup now launches the monitor, not the configuration UI.
-- GitHub release builds now call Cargo through a stable executable path.
-
-## Features
-
-- Detects running games by executable path under configured game library folders.
-- Supports multiple game folders and auto-scans local Steam, Epic, GOG, WeGame, XboxGames, Battle.net, EA, Ubisoft, and common game folders.
-- Reads Steam app manifests and filters common non-game entries such as tools, servers, SDKs, runtimes, benchmarks, and Wallpaper Engine.
-- Preserves alternative speed limits if they were already enabled before a game started.
-- Prevents duplicate monitor instances from competing with each other.
-- Uses cached process detection to keep background CPU usage low.
-- Uses qBittorrent Web UI API.
-- Includes a local browser configuration UI documented in [`docs/CONFIG_UI_DESIGN.md`](docs/CONFIG_UI_DESIGN.md).
+Latest release: [v0.2.3](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.3)
 
 ## Download
 
-Download the latest Windows package from [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
-Tagged versions such as `v0.2.2` are packaged automatically by the Release workflow.
+Download `qbee-game-speed-limiter-windows.zip` from the [Releases page](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
 
-The packaged artifact contains:
+The zip contains only the end-user files:
 
-- `qbee_limiter_config.exe`
-- `qbee_limiter_monitor.exe`
-- `qbee_game_speed_limiter.json`
-- `README.md`
-- `README.zh-CN.md`
-- `USER_GUIDE.zh-CN.md`
-- `DESIGN.md`
-- `CONFIG_UI_DESIGN.md`
+```text
+qbee_limiter_config.exe
+qbee_limiter_monitor.exe
+qbee_game_speed_limiter.json
+README.zh-CN.md
+LICENSE
+```
 
-Chinese guide: [`docs/USER_GUIDE.zh-CN.md`](docs/USER_GUIDE.zh-CN.md)
+## Quick Start
 
-## Setup
-
-1. Enable qBittorrent Web UI.
-2. Keep both exe files and `qbee_game_speed_limiter.json` in the same folder.
+1. Enable qBittorrent Web UI in `Tools -> Options -> WebUI`.
+2. Extract the zip.
 3. Run `qbee_limiter_config.exe`.
-4. Set the Web UI URL, username, password, monitor interval, and game library folders.
-5. Click `自动扫描` to find local game libraries, or add folders manually.
-6. Enable `保存后自动启动监控` if you want the monitor to start after saving.
-7. Click `保存并应用`.
+4. Enter the qB Web UI URL, username, and password.
+5. Click `测试连接` to test the connection.
+6. Click `自动扫描` to find game library folders, or add folders manually.
+7. Enable `保存后自动启动监控`.
+8. Click `保存并应用`.
+
+After saving, `qbee_limiter_monitor.exe` runs in the background. You can close the browser configuration page.
+
+## qB Web UI Notes
+
+The common URL is:
+
+```text
+http://127.0.0.1:8080
+```
+
+If qB allows localhost clients to bypass authentication, you can usually leave username and password empty.
+
+If the URL opens `CEF remote debugging`, Steam may be occupying `127.0.0.1:8080`. Try:
+
+```text
+http://[::1]:8080
+```
+
+If that still fails, change the qB Web UI port to `8081` and set this app to:
+
+```text
+http://127.0.0.1:8081
+```
+
+## How It Works
+
+- `qbee_limiter_config.exe` opens the local browser-based configuration UI.
+- `qbee_limiter_monitor.exe` is the low-memory background monitor.
+- Windows startup launches the monitor, not the configuration UI.
+- The monitor only restores speed limits that it changed itself.
 
 ## Build
 
-Install Rust and MinGW-w64 first, then run:
+Install Rust and MinGW-w64, then run:
 
 ```powershell
 .\build.ps1
 ```
 
-The build writes `qbee_limiter_config.exe` and `qbee_limiter_monitor.exe` in the project folder.
-Legacy C++, C#, Python, and Win32 single-window implementations are kept as reference material only.
+Developer docs, UI design notes, and changelog are kept in the repository instead of the release zip.
 
-## Notes
+## License
 
-- qBittorrent must be running.
-- Web UI credentials must be correct.
-- If `http://127.0.0.1:8080` opens `CEF remote debugging`, Steam CEF may be occupying the IPv4 loopback address. Try `http://[::1]:8080` first. If that still fails, change qBittorrent Web UI to another port such as `8081`, then set the app URL to `http://127.0.0.1:8081`.
+MIT License

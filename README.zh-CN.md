@@ -2,105 +2,173 @@
 
 [English](README.md) | 简体中文
 
-这是一个 Windows 小工具，用于在玩游戏时自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”，游戏退出后再自动关闭限制。
+这是一个 Windows 小工具。打开游戏时，它会自动打开 qBittorrent / qBittorrent Enhanced Edition 的“备用速度限制”；游戏关闭后，它会自动恢复。
 
-最新版下载：[v0.2.2](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.2)
+最新版下载：[v0.2.3](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/tag/v0.2.3)
 
-## v0.2.2 变化
+## 适合谁
 
-- 拆分为两个程序：
-  - `qbee_limiter_monitor.exe`：无窗口后台监控，负责检测游戏和控制 qB。
-  - `qbee_limiter_config.exe`：本地网页配置界面，只在需要配置时打开。
-- 保存配置后可以自动启动后台监控程序。
-- 开机自启动现在启动后台监控程序，而不是配置界面。
-- 修复 GitHub Actions Release 构建中 Cargo 路径调用失败的问题。
+如果你一边下载 BT，一边玩网游、联机游戏或对网络延迟敏感的游戏，这个工具可以帮你在玩游戏时自动降低 qB 下载/上传速度，退出游戏后再恢复正常。
 
-## 功能
+## 下载哪个文件
 
-- 根据游戏库中的运行进程自动判断是否正在玩游戏。
-- 支持多个游戏库目录。
-- 支持自动扫描本机 Steam、Epic、GOG、WeGame、XboxGames、Battle.net、EA、Ubisoft 和常见游戏目录。
-- 会读取 Steam `appmanifest_*.acf`，并过滤 Wallpaper Engine、服务器工具、SDK、运行库、基准测试、编辑器等常见非游戏条目。
-- 通过 qBittorrent Web UI API 控制备用速度限制。
-- 如果备用速度限制原本就是打开的，游戏退出后会保持打开，不会误关。
-- 阻止重复打开多个后台监控实例，避免互相抢状态。
-- 使用缓存式进程检测，降低后台 CPU 占用。
-- 配置界面按 Linear 风格设计，设计说明见 [`docs/CONFIG_UI_DESIGN.md`](docs/CONFIG_UI_DESIGN.md)。
+打开 [Releases 页面](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases)，下载：
 
-## 下载
+```text
+qbee-game-speed-limiter-windows.zip
+```
 
-请从 [Releases](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases) 下载最新版 Windows 包。
+解压后应看到 5 个文件：
 
-打包内容包括：
+```text
+qbee_limiter_config.exe
+qbee_limiter_monitor.exe
+qbee_game_speed_limiter.json
+README.zh-CN.md
+LICENSE
+```
 
-- `qbee_limiter_config.exe`
-- `qbee_limiter_monitor.exe`
-- `qbee_game_speed_limiter.json`
-- `README.md`
-- `README.zh-CN.md`
-- `USER_GUIDE.zh-CN.md`
-- `DESIGN.md`
-- `CONFIG_UI_DESIGN.md`
-- `LICENSE`
+平时主要打开 `qbee_limiter_config.exe`。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
 
-## 快速开始
+## 第一次使用
 
-1. 在 qBittorrent/qBEE 中启用 Web UI。
-2. 保持两个 exe 和 `qbee_game_speed_limiter.json` 在同一目录。
-3. 双击运行 `qbee_limiter_config.exe`。
-4. 在浏览器打开的配置界面中填写 qB Web UI 地址、用户名、密码和游戏库目录。
-5. 点击“自动扫描”查找本机游戏库，也可以手动添加目录。
-6. 勾选“保存后自动启动监控”。
-7. 点击“保存并应用”。
+### 1. 先打开 qB 的 Web UI
 
-## 行为说明
+在 qBittorrent / qBittorrent Enhanced Edition 里进入：
 
-- 平时只需要后台 `qbee_limiter_monitor.exe` 常驻。
-- 配置界面可以用完就关，不影响后台监控。
-- 程序只会关闭由它自己打开的备用速度限制。
-- 如果游戏启动前备用速度限制已经是打开状态，程序会认为这是你的手动设置，游戏退出后会保持打开。
-- 默认检测间隔是 5 秒。想进一步降低后台占用，可以把 `check_interval_seconds` 调大；想更快响应游戏启动和退出，可以调小。
+```text
+工具 -> 选项 -> WebUI
+```
 
-## qB Web UI 地址
+请确认：
 
-常见地址：
+- 勾选了“Web 用户界面 / Web User Interface”。
+- 端口通常是 `8080`。
+- 如果你勾选了“Bypass authentication for clients on localhost”，本工具通常可以不填密码。
+- 如果没有勾选 localhost 免验证，请记住这里设置的用户名和密码。
+
+### 2. 打开配置界面
+
+双击：
+
+```text
+qbee_limiter_config.exe
+```
+
+它会在浏览器里打开一个本地配置页面。
+
+### 3. 填 qB Web UI 信息
+
+常见填写方式：
+
+```text
+地址：http://127.0.0.1:8080
+用户名：你的 qB Web UI 用户名
+密码：你的 qB Web UI 密码
+```
+
+如果 qB 设置了 localhost 免验证，可以先把用户名和密码留空，然后点“测试连接”。
+
+注意：这里填的是 qBittorrent 的 Web UI 信息，不是 PeerBanHelper 的 Token，也不是 GitHub 密码。
+
+### 4. 添加游戏库目录
+
+点击“自动扫描”。
+
+程序会尝试寻找 Steam、Epic、GOG、WeGame、XboxGames、Battle.net、EA、Ubisoft 和常见游戏目录。
+
+如果没有扫到你的游戏目录，可以手动添加。例如：
+
+```text
+C:\Program Files (x86)\Steam\steamapps
+D:\SteamLibrary\steamapps
+```
+
+Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游戏 exe。
+
+### 5. 测试并保存
+
+推荐顺序：
+
+1. 点击“测试连接”。
+2. 看到连接成功后，点击“自动扫描”。
+3. 勾选“保存后自动启动监控”。
+4. 点击“保存并应用”。
+
+保存成功后，后台监控程序会自动启动。之后你可以关闭浏览器里的配置页面。
+
+## 平时怎么用
+
+- 正常打开 qB。
+- 正常打开游戏。
+- 检测到游戏运行后，工具会打开 qB 的备用速度限制。
+- 游戏退出后，工具会自动关闭它打开的限制。
+
+如果游戏启动前你已经手动打开了备用速度限制，工具会尊重你的手动设置，游戏退出后不会帮你关掉。
+
+## 开机自启动
+
+在配置页面里打开“开机自启动”并保存。
+
+开机后启动的是 `qbee_limiter_monitor.exe` 后台程序，不会弹出配置界面。
+
+## 常见问题
+
+### 点“测试连接”失败
+
+先在浏览器里打开你填写的地址，例如：
 
 ```text
 http://127.0.0.1:8080
 ```
 
-如果 `127.0.0.1:8080` 打开的是 `CEF remote debugging`，可能是 Steam 的 CEF helper 占用了 IPv4 本机地址。可以尝试：
+如果浏览器也打不开，说明 qB Web UI 没开，或者端口填错了。
+
+### 打开的是 CEF remote debugging
+
+这通常是 Steam 占用了 `127.0.0.1:8080`。可以试：
 
 ```text
 http://[::1]:8080
 ```
 
-如果仍然不行，建议在 qBittorrent 设置里把 Web UI 端口改成 `8081` 或其他端口，然后在本工具里填写：
+如果还不行，建议在 qB 的 WebUI 设置里把端口改成 `8081`，然后本工具里填写：
 
 ```text
 http://127.0.0.1:8081
 ```
 
-## 构建
+### 密码一直错误
 
-先安装 Rust 和 MinGW-w64，然后在 Windows 中运行：
+请确认你填的是 qB Web UI 的用户名和密码。qB 设置页面里的密码框如果显示 `Change current password`，不代表当前密码就是这串文字。
+
+如果你只在本机使用，可以在 qB WebUI 设置里勾选 localhost 免验证，然后本工具里把用户名和密码留空再测试。
+
+### 自动扫描没有找到所有游戏
+
+自动扫描只能找常见平台和常见目录。没有扫到时，手动添加游戏库目录即可。
+
+Steam 游戏请添加 `steamapps` 文件夹；其他平台一般添加装游戏的总文件夹。
+
+### 关闭游戏后没有恢复
+
+默认每 5 秒检查一次，所以可能会等几秒。若仍不恢复，请确认：
+
+- 后台监控还在运行。
+- 游戏进程确实已经退出。
+- 游戏目录没有被误加到排除规则里。
+
+## 隐私提醒
+
+`qbee_game_speed_limiter.json` 会在本机保存 qB Web UI 地址、用户名和密码。不要把自己的真实配置上传到 GitHub 或发给别人。
+
+## 开发者
+
+构建方式、设计稿、更新日志等开发资料放在仓库中，不再放进发行包。
 
 ```powershell
 .\build.ps1
 ```
-
-构建输出：
-
-```text
-qbee_limiter_config.exe
-qbee_limiter_monitor.exe
-```
-
-旧的 C++、C#、Python 和 Win32 单窗口实现仅保留为参考。
-
-## 隐私
-
-`qbee_game_speed_limiter.json` 会在本机明文保存 qB Web UI 地址、用户名和密码。不要把自己的真实配置上传到 GitHub。
 
 ## 许可证
 

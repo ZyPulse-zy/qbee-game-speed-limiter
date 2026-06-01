@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.2.3
+
+- Rewrote the Chinese README as a beginner-friendly setup guide.
+- Corrected the release package file list in both README files.
+- Added clearer qB Web UI setup, password, localhost bypass, CEF remote debugging, and game library folder guidance.
+
 ## v0.2.2
 
 - Slimmed the Windows release package to only include the two executables, the default config file, Chinese quick-start notes, and the license.
