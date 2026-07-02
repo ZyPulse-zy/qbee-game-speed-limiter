@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.3.2
+
+- Added a multi-size Windows `.ico` derived from the project icon.
+- Embedded the app icon into both Windows executables during MinGW release builds when `windres` is available.
+- Updated shortcut naming to use the broader qbee Game Speed Limiter branding while keeping uninstall cleanup for old shortcut names.
+
 ## v0.3.1
 
 - Added automatic global speed-limit control for µTorrent / BitTorrent Classic through the Web UI API.

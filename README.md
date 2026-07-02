@@ -34,6 +34,7 @@ This tool detects when a game is running, applies a downloader-specific game-spe
 - Starts the low-memory monitor with Windows.
 - Keeps the configuration UI separate from the background monitor.
 - Can create a desktop shortcut from the configuration UI.
+- Windows executables and shortcuts use the project app icon.
 - Includes a self-check tool for missing files, invalid URLs, game folder problems, stale monitor status, and startup settings.
 - Includes portable install/uninstall scripts without requiring administrator permissions.
 - Does not overwrite qB / Transmission alternative speed limits that you enabled manually.
