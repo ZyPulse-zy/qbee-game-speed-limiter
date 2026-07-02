@@ -1,0 +1,20 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="qBittorrent Game Speed Limiter icon">
+  <defs>
+    <linearGradient id="bg" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5E6AD2"/>
+      <stop offset="1" stop-color="#32D583"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="48" y1="42" x2="210" y2="215" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F7F8F8" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#D8DCFF" stop-opacity=".88"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#08090A"/>
+  <path d="M48 136a80 80 0 1 1 159 12" fill="none" stroke="url(#bg)" stroke-width="20" stroke-linecap="round"/>
+  <path d="M199 126l21 25 24-22" fill="none" stroke="#32D583" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M128 54v78" stroke="url(#ring)" stroke-width="18" stroke-linecap="round"/>
+  <path d="M95 104l33 34 33-34" fill="none" stroke="url(#ring)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="66" y="155" width="124" height="47" rx="23.5" fill="#15171E" stroke="#D8DCFF" stroke-opacity=".55" stroke-width="8"/>
+  <circle cx="101" cy="179" r="8" fill="#32D583"/>
+  <path d="M154 168v22M143 179h22" stroke="#F7F8F8" stroke-width="9" stroke-linecap="round"/>
+</svg>

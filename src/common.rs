@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::io::Write;
 use std::mem::{size_of, zeroed};
@@ -20,10 +21,17 @@ const RUN_VALUE: &str = "QbeeLimiterMonitor";
 const MONITOR_MUTEX: &str = "QbeeLimiterMonitor.SingleInstance";
 
 #[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
+    pub download_client: DownloadClientKind,
     pub qbee_url: String,
+    pub transmission_url: String,
+    pub aria2_url: String,
     pub username: String,
     pub password: String,
+    pub aria2_secret: String,
+    pub game_download_limit_kib: u64,
+    pub game_upload_limit_kib: u64,
     pub game_folders: Vec<String>,
     pub game_processes: Vec<String>,
     pub exclude_processes: Vec<String>,
@@ -36,12 +44,33 @@ pub struct AppConfig {
     pub log_file: String,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum DownloadClientKind {
+    QBittorrent,
+    Transmission,
+    Aria2,
+    BitComet,
+}
+
+impl Default for DownloadClientKind {
+    fn default() -> Self {
+        Self::QBittorrent
+    }
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            download_client: DownloadClientKind::QBittorrent,
             qbee_url: "http://127.0.0.1:8080".into(),
+            transmission_url: "http://127.0.0.1:9091/transmission/rpc".into(),
+            aria2_url: "http://127.0.0.1:6800/jsonrpc".into(),
             username: "admin".into(),
             password: String::new(),
+            aria2_secret: String::new(),
+            game_download_limit_kib: 512,
+            game_upload_limit_kib: 128,
             game_folders: vec![
                 r"C:\Program Files (x86)\Steam\steamapps".into(),
                 r"D:\SteamLibrary\steamapps".into(),
@@ -258,6 +287,32 @@ pub fn start_monitor_process_checked() -> Result<MonitorStatus, String> {
     Err("后台监控启动后没有响应。可能已有旧版本监控程序正在运行，或 qbee_limiter_monitor.exe 启动后立即退出。请在任务管理器结束 qbee_limiter_monitor.exe 后重试，或把新版本解压覆盖到原目录。".into())
 }
 
+pub fn create_desktop_shortcut() -> Result<PathBuf, String> {
+    let profile =
+        env::var("USERPROFILE").map_err(|_| "无法读取 USERPROFILE，不能定位桌面。".to_string())?;
+    let candidates = [
+        PathBuf::from(&profile).join("Desktop"),
+        PathBuf::from(&profile).join("OneDrive").join("Desktop"),
+        PathBuf::from(&profile).join("桌面"),
+    ];
+    let desktop = candidates
+        .iter()
+        .find(|path| path.is_dir())
+        .cloned()
+        .ok_or_else(|| "没有找到桌面目录。".to_string())?;
+    let exe = app_dir().join("qbee_limiter_config.exe");
+    if !exe.is_file() {
+        return Err(format!("找不到配置程序：{}", exe.display()));
+    }
+    let exe_url = format!("file:///{}", exe.to_string_lossy().replace('\\', "/"));
+    let shortcut = desktop.join("qBittorrent 游戏限速助手.url");
+    let content = format!(
+        "[InternetShortcut]\r\nURL={exe_url}\r\nIconFile={}\r\nIconIndex=0\r\n",
+        exe.to_string_lossy()
+    );
+    fs::write(&shortcut, content).map_err(|err| err.to_string())?;
+    Ok(shortcut)
+}
 pub fn set_startup_enabled(enabled: bool) {
     unsafe {
         let mut key: HKEY = null_mut();
@@ -291,6 +346,143 @@ pub fn set_startup_enabled(enabled: bool) {
             RegDeleteValueW(key, value.as_ptr());
         }
         RegCloseKey(key);
+    }
+}
+
+pub enum DownloadLimitSnapshot {
+    QBittorrent {
+        changed: bool,
+    },
+    Transmission {
+        changed: bool,
+    },
+    Aria2 {
+        previous_download: String,
+        previous_upload: String,
+    },
+}
+
+pub enum DownloadController {
+    QBittorrent(QbeeClient),
+    Transmission(TransmissionClient),
+    Aria2(Aria2Client),
+    BitComet(BitCometClient),
+}
+
+impl DownloadController {
+    pub fn new(config: &AppConfig) -> Self {
+        match config.download_client {
+            DownloadClientKind::QBittorrent => Self::QBittorrent(QbeeClient::new(config)),
+            DownloadClientKind::Transmission => Self::Transmission(TransmissionClient::new(config)),
+            DownloadClientKind::Aria2 => Self::Aria2(Aria2Client::new(config)),
+            DownloadClientKind::BitComet => Self::BitComet(BitCometClient::new()),
+        }
+    }
+
+    pub fn test_connection(&mut self, config: &AppConfig) -> Result<String, String> {
+        match self {
+            Self::QBittorrent(client) => match client.speed_limits_enabled()? {
+                true => Ok("qB 连接成功，备用速度限制当前已开启。".into()),
+                false => Ok("qB 连接成功，备用速度限制当前已关闭。".into()),
+            },
+            Self::Transmission(client) => match client.alt_speed_enabled()? {
+                true => Ok("Transmission 连接成功，备用限速当前已开启。".into()),
+                false => Ok("Transmission 连接成功，备用限速当前已关闭。".into()),
+            },
+            Self::Aria2(client) => {
+                let (down, up) = client.current_limits()?;
+                Ok(format!(
+                    "aria2 连接成功，当前全局限速：下载 {down}，上传 {up}。游戏中将切换为 {}K / {}K。",
+                    config.game_download_limit_kib, config.game_upload_limit_kib
+                ))
+            }
+            Self::BitComet(client) => client.test_connection(),
+        }
+    }
+
+    pub fn enable_game_mode(
+        &mut self,
+        config: &AppConfig,
+    ) -> Result<(DownloadLimitSnapshot, String), String> {
+        match self {
+            Self::QBittorrent(client) => {
+                let already_enabled = client.speed_limits_enabled()?;
+                if already_enabled {
+                    Ok((
+                        DownloadLimitSnapshot::QBittorrent { changed: false },
+                        "检测到游戏运行，qB 备用速度限制原本已打开。".into(),
+                    ))
+                } else {
+                    client.set_speed_limits(true)?;
+                    Ok((
+                        DownloadLimitSnapshot::QBittorrent { changed: true },
+                        "检测到游戏运行，已打开 qB 备用速度限制。".into(),
+                    ))
+                }
+            }
+            Self::Transmission(client) => {
+                let already_enabled = client.alt_speed_enabled()?;
+                if already_enabled {
+                    Ok((
+                        DownloadLimitSnapshot::Transmission { changed: false },
+                        "检测到游戏运行，Transmission 备用限速原本已打开。".into(),
+                    ))
+                } else {
+                    client.set_alt_speed(true)?;
+                    Ok((
+                        DownloadLimitSnapshot::Transmission { changed: true },
+                        "检测到游戏运行，已打开 Transmission 备用限速。".into(),
+                    ))
+                }
+            }
+            Self::Aria2(client) => {
+                let (previous_download, previous_upload) = client.current_limits()?;
+                client.set_limits(config.game_download_limit_kib, config.game_upload_limit_kib)?;
+                Ok((
+                    DownloadLimitSnapshot::Aria2 {
+                        previous_download,
+                        previous_upload,
+                    },
+                    format!(
+                        "检测到游戏运行，已把 aria2 全局限速切换为下载 {}K / 上传 {}K。",
+                        config.game_download_limit_kib, config.game_upload_limit_kib
+                    ),
+                ))
+            }
+            Self::BitComet(client) => client.enable_game_mode(),
+        }
+    }
+
+    pub fn restore(&mut self, snapshot: DownloadLimitSnapshot) -> Result<String, String> {
+        match (self, snapshot) {
+            (Self::QBittorrent(client), DownloadLimitSnapshot::QBittorrent { changed }) => {
+                if changed {
+                    client.set_speed_limits(false)?;
+                    Ok("检测到游戏退出，已关闭 qB 备用速度限制。".into())
+                } else {
+                    Ok("检测到游戏退出，保留原本已打开的 qB 备用速度限制。".into())
+                }
+            }
+            (Self::Transmission(client), DownloadLimitSnapshot::Transmission { changed }) => {
+                if changed {
+                    client.set_alt_speed(false)?;
+                    Ok("检测到游戏退出，已关闭 Transmission 备用限速。".into())
+                } else {
+                    Ok("检测到游戏退出，保留原本已打开的 Transmission 备用限速。".into())
+                }
+            }
+            (
+                Self::Aria2(client),
+                DownloadLimitSnapshot::Aria2 {
+                    previous_download,
+                    previous_upload,
+                },
+            ) => {
+                client.restore_limits(&previous_download, &previous_upload)?;
+                Ok("检测到游戏退出，已恢复 aria2 原来的全局限速。".into())
+            }
+            _ => Ok("检测到游戏退出，当前下载器无需恢复。".into()),
+        }
     }
 }
 
@@ -389,7 +581,7 @@ impl QbeeClient {
             "POST" => self.agent.post(&url),
             _ => self.agent.get(&url),
         }
-        .set("User-Agent", "qbee-limiter/6.0")
+        .set("User-Agent", "qbee-limiter/7.0")
         .set("Referer", &self.base_url);
 
         if let Some(cookie) = &self.cookie {
@@ -411,14 +603,242 @@ impl QbeeClient {
     }
 }
 
-pub fn test_connection(config: &AppConfig) -> Result<String, String> {
-    let mut client = QbeeClient::new(config);
-    match client.speed_limits_enabled()? {
-        true => Ok("连接成功，备用速度限制当前已开启。".into()),
-        false => Ok("连接成功，备用速度限制当前已关闭。".into()),
+pub struct TransmissionClient {
+    url: String,
+    username: String,
+    password: String,
+    agent: ureq::Agent,
+    session_id: Option<String>,
+}
+
+impl TransmissionClient {
+    pub fn new(config: &AppConfig) -> Self {
+        Self {
+            url: config.transmission_url.clone(),
+            username: config.username.clone(),
+            password: config.password.clone(),
+            agent: ureq::AgentBuilder::new()
+                .timeout_connect(Duration::from_secs(5))
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build(),
+            session_id: None,
+        }
+    }
+
+    pub fn alt_speed_enabled(&mut self) -> Result<bool, String> {
+        let value = self.rpc(
+            "session-get",
+            serde_json::json!({ "fields": ["alt-speed-enabled"] }),
+        )?;
+        value["arguments"]["alt-speed-enabled"]
+            .as_bool()
+            .ok_or_else(|| "Transmission 返回中没有 alt-speed-enabled 字段。".to_string())
+    }
+
+    pub fn set_alt_speed(&mut self, enabled: bool) -> Result<(), String> {
+        self.rpc(
+            "session-set",
+            serde_json::json!({ "alt-speed-enabled": enabled }),
+        )?;
+        Ok(())
+    }
+
+    fn rpc(
+        &mut self,
+        method: &str,
+        arguments: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({ "method": method, "arguments": arguments }).to_string();
+        self.send_rpc(&body, true)
+    }
+
+    fn send_rpc(&mut self, body: &str, allow_retry: bool) -> Result<serde_json::Value, String> {
+        let mut req = self
+            .agent
+            .post(&self.url)
+            .set("User-Agent", "qbee-limiter/7.0")
+            .set("Content-Type", "application/json");
+        if let Some(session_id) = &self.session_id {
+            req = req.set("X-Transmission-Session-Id", session_id);
+        }
+        if !self.username.is_empty() || !self.password.is_empty() {
+            req = req.set(
+                "Authorization",
+                &format!("Basic {}", base64_basic(&self.username, &self.password)),
+            );
+        }
+        match req.send_string(body) {
+            Ok(response) => parse_transmission_response(response),
+            Err(ureq::Error::Status(409, response)) if allow_retry => {
+                if let Some(session_id) = response.header("X-Transmission-Session-Id") {
+                    self.session_id = Some(session_id.to_string());
+                    self.send_rpc(body, false)
+                } else {
+                    Err("Transmission 要求 Session ID，但响应中没有返回。".into())
+                }
+            }
+            Err(err) => Err(err.to_string()),
+        }
     }
 }
 
+fn parse_transmission_response(response: ureq::Response) -> Result<serde_json::Value, String> {
+    let text = response.into_string().map_err(|err| err.to_string())?;
+    let value: serde_json::Value = serde_json::from_str(&text).map_err(|err| err.to_string())?;
+    if value["result"].as_str() == Some("success") {
+        Ok(value)
+    } else {
+        Err(format!(
+            "Transmission RPC 失败：{}",
+            value["result"].as_str().unwrap_or("unknown")
+        ))
+    }
+}
+
+pub struct Aria2Client {
+    url: String,
+    secret: String,
+    agent: ureq::Agent,
+}
+
+impl Aria2Client {
+    pub fn new(config: &AppConfig) -> Self {
+        Self {
+            url: config.aria2_url.clone(),
+            secret: config.aria2_secret.clone(),
+            agent: ureq::AgentBuilder::new()
+                .timeout_connect(Duration::from_secs(5))
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build(),
+        }
+    }
+
+    pub fn current_limits(&mut self) -> Result<(String, String), String> {
+        let value = self.rpc("aria2.getGlobalOption", vec![])?;
+        let download = value["max-overall-download-limit"]
+            .as_str()
+            .unwrap_or("0")
+            .to_string();
+        let upload = value["max-overall-upload-limit"]
+            .as_str()
+            .unwrap_or("0")
+            .to_string();
+        Ok((download, upload))
+    }
+
+    pub fn set_limits(&mut self, download_kib: u64, upload_kib: u64) -> Result<(), String> {
+        let options = serde_json::json!({
+            "max-overall-download-limit": format!("{}K", download_kib),
+            "max-overall-upload-limit": format!("{}K", upload_kib),
+        });
+        self.rpc("aria2.changeGlobalOption", vec![options])?;
+        Ok(())
+    }
+
+    pub fn restore_limits(&mut self, download: &str, upload: &str) -> Result<(), String> {
+        let options = serde_json::json!({
+            "max-overall-download-limit": download,
+            "max-overall-upload-limit": upload,
+        });
+        self.rpc("aria2.changeGlobalOption", vec![options])?;
+        Ok(())
+    }
+
+    fn rpc(
+        &mut self,
+        method: &str,
+        mut params: Vec<serde_json::Value>,
+    ) -> Result<serde_json::Value, String> {
+        if !self.secret.is_empty() {
+            params.insert(0, serde_json::json!(format!("token:{}", self.secret)));
+        }
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "qbee-limiter",
+            "method": method,
+            "params": params,
+        })
+        .to_string();
+        let response = self
+            .agent
+            .post(&self.url)
+            .set("User-Agent", "qbee-limiter/7.0")
+            .set("Content-Type", "application/json")
+            .send_string(&body)
+            .map_err(|err| err.to_string())?;
+        let text = response.into_string().map_err(|err| err.to_string())?;
+        let value: serde_json::Value =
+            serde_json::from_str(&text).map_err(|err| err.to_string())?;
+        if !value["error"].is_null() {
+            return Err(format!(
+                "aria2 RPC 失败：{}",
+                value["error"]["message"].as_str().unwrap_or("unknown")
+            ));
+        }
+        Ok(value["result"].clone())
+    }
+}
+
+pub struct BitCometClient;
+
+impl BitCometClient {
+    pub fn new() -> Self {
+        Self
+    }
+
+    pub fn test_connection(&self) -> Result<String, String> {
+        Err(bitcomet_unsupported_message())
+    }
+
+    pub fn enable_game_mode(&self) -> Result<(DownloadLimitSnapshot, String), String> {
+        Err(bitcomet_unsupported_message())
+    }
+}
+
+fn bitcomet_unsupported_message() -> String {
+    "BitComet/比特彗星已加入客户端列表，但当前没有稳定公开的 Web/RPC 限速接口可供自动控制。本工具暂不能可靠自动切换 BitComet 限速；建议先使用 qBittorrent、Transmission 或 aria2，BitComet 自动控制将放到后续 Windows 级限速方案中。".into()
+}
+
+pub fn test_connection(config: &AppConfig) -> Result<String, String> {
+    let mut controller = DownloadController::new(config);
+    controller.test_connection(config)
+}
+fn base64_basic(username: &str, password: &str) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let input = format!("{username}:{password}");
+    let bytes = input.as_bytes();
+    let mut output = String::new();
+    let mut index = 0;
+    while index < bytes.len() {
+        let b0 = bytes[index];
+        let b1 = if index + 1 < bytes.len() {
+            bytes[index + 1]
+        } else {
+            0
+        };
+        let b2 = if index + 2 < bytes.len() {
+            bytes[index + 2]
+        } else {
+            0
+        };
+        output.push(TABLE[(b0 >> 2) as usize] as char);
+        output.push(TABLE[(((b0 & 0b0000_0011) << 4) | (b1 >> 4)) as usize] as char);
+        if index + 1 < bytes.len() {
+            output.push(TABLE[(((b1 & 0b0000_1111) << 2) | (b2 >> 6)) as usize] as char);
+        } else {
+            output.push('=');
+        }
+        if index + 2 < bytes.len() {
+            output.push(TABLE[(b2 & 0b0011_1111) as usize] as char);
+        } else {
+            output.push('=');
+        }
+        index += 3;
+    }
+    output
+}
 fn url_encode(value: &str) -> String {
     let mut out = String::new();
     for byte in value.as_bytes() {
@@ -681,8 +1101,8 @@ pub fn run_monitor_forever() {
     clear_stop_monitor();
     let mut config = load_config();
     let mut detector = GameDetector::new(&config);
-    let mut client = QbeeClient::new(&config);
-    let mut app_enabled_speed_limits = false;
+    let mut controller = DownloadController::new(&config);
+    let mut active_limit: Option<DownloadLimitSnapshot> = None;
     let mut had_state = false;
     let mut last_game_running = false;
     let mut last_detected = String::new();
@@ -700,7 +1120,8 @@ pub fn run_monitor_forever() {
         if serde_json::to_string(&latest_config).ok() != serde_json::to_string(&config).ok() {
             config = latest_config;
             detector = GameDetector::new(&config);
-            client = QbeeClient::new(&config);
+            controller = DownloadController::new(&config);
+            active_limit = None;
             log_line(&config, "Monitor reloaded config.");
         }
 
@@ -714,29 +1135,17 @@ pub fn run_monitor_forever() {
 
         if !had_state || game_running != last_game_running {
             let result = if game_running {
-                match client.speed_limits_enabled() {
-                    Ok(already_enabled) => {
-                        if !already_enabled {
-                            if let Err(error) = client.set_speed_limits(true) {
-                                Err(error)
-                            } else {
-                                app_enabled_speed_limits = true;
-                                Ok("检测到游戏运行，已打开备用速度限制。".to_string())
-                            }
-                        } else {
-                            app_enabled_speed_limits = false;
-                            Ok("检测到游戏运行，备用速度限制原本已打开。".to_string())
-                        }
-                    }
-                    Err(error) => Err(error),
-                }
+                controller
+                    .enable_game_mode(&config)
+                    .map(|(snapshot, text)| {
+                        active_limit = Some(snapshot);
+                        text
+                    })
             } else if had_state {
-                if app_enabled_speed_limits {
-                    let _ = client.set_speed_limits(false);
-                    app_enabled_speed_limits = false;
-                    Ok("检测到游戏退出，已关闭备用速度限制。".to_string())
+                if let Some(snapshot) = active_limit.take() {
+                    controller.restore(snapshot)
                 } else {
-                    Ok("检测到游戏退出，保留原本已打开的备用速度限制。".to_string())
+                    Ok("检测到游戏退出，当前下载器无需恢复。".to_string())
                 }
             } else {
                 Ok("未检测到游戏运行。".to_string())
@@ -771,8 +1180,10 @@ pub fn run_monitor_forever() {
         }
     }
 
-    if config.restore_on_exit && app_enabled_speed_limits {
-        let _ = client.set_speed_limits(false);
+    if config.restore_on_exit {
+        if let Some(snapshot) = active_limit.take() {
+            let _ = controller.restore(snapshot);
+        }
     }
     clear_stop_monitor();
     save_status(&MonitorStatus {

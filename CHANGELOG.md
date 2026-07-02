@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.3.0
+
+- Added a multi-downloader configuration model for qBittorrent/qBEE, Transmission, aria2/Motrix, and BitComet visibility.
+- Added real automatic control for Transmission alternative speed mode and aria2 global speed limits.
+- Added clearer BitComet status messaging instead of pretending automatic control is reliable without a stable public API.
+- Improved the configuration UI with downloader selection, subtle interaction animations, aria2 game-speed fields, and desktop shortcut creation.
+- Added icon assets and installation guidance for a more complete end-user package.
 ## v0.2.5
 
 - Fixed the Start Monitor action reporting success before the background monitor actually became responsive.

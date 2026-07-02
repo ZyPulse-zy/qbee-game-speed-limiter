@@ -1,27 +1,38 @@
-# qBittorrent Game Speed Limiter
+﻿# qBittorrent Game Speed Limiter
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Automatically throttle qBittorrent downloads and uploads while you play games, then restore speeds after exit. Built for Windows users who keep qBittorrent or qBittorrent Enhanced Edition running in the background.
+![App icon](docs/app-icon.png)
+
+Automatically throttle torrent/magnet download clients while you play games, then restore speeds after exit. Built for Windows users who keep BT/PT downloads running in the background.
 
 [Download for Windows](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [中文教程](README.zh-CN.md) · [FAQ](README.zh-CN.md#常见问题)
 
 ![Configuration UI screenshot](docs/config-ui.png)
 
+## Supported Clients
+
+| Client | Status | Game mode behavior |
+| --- | --- | --- |
+| qBittorrent / qBittorrent Enhanced Edition | Supported | Toggles alternative speed limits |
+| Transmission | Supported | Toggles `alt-speed-enabled` through RPC |
+| aria2 / Motrix | Supported | Temporarily changes global upload/download limits, then restores them |
+| BitComet | Listed, not auto-controlled yet | BitComet lacks a stable public remote speed-limit API, so the app shows a clear warning instead of pretending it works |
+
 ## Why Use It?
 
 Background BT / PT downloads can saturate your bandwidth and increase latency in CS2, Valorant, Minecraft, Palworld, voice chat, or other online games.
 
-This tool detects when a game is running, enables qBittorrent alternative speed limits, and restores the previous state after the game exits.
+This tool detects when a game is running, applies a downloader-specific game-speed mode, and restores the previous state after the game exits.
 
 ## Highlights
 
 - Supports Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame and common game folders.
-- Supports qBittorrent and qBittorrent Enhanced Edition.
+- Supports qB, Transmission, aria2 / Motrix, with honest BitComet status messaging.
 - Starts the low-memory monitor with Windows.
 - Keeps the configuration UI separate from the background monitor.
-- Does not overwrite alternative speed limits that you enabled manually.
-- Can auto-scan game library folders or use manually added folders.
+- Can create a desktop shortcut from the configuration UI.
+- Does not overwrite qB / Transmission alternative speed limits that you enabled manually.
 
 ## Download
 
@@ -39,45 +50,22 @@ LICENSE
 
 ## Quick Start
 
-1. Enable qBittorrent Web UI in `Tools -> Options -> WebUI`.
+1. Enable your download client's remote control interface.
 2. Extract the zip.
 3. Run `qbee_limiter_config.exe`.
-4. Enter the qB Web UI URL, username, and password.
-5. Click `测试连接` to test the connection.
-6. Click `自动扫描` to find game library folders, or add folders manually.
-7. Enable `保存后自动启动监控`.
-8. Click `保存并应用`.
+4. Choose qBittorrent, Transmission, aria2 / Motrix, or BitComet in the client selector.
+5. Enter the URL, username/password, or aria2 secret as needed.
+6. Click `测试连接`.
+7. Click `自动扫描` to find game library folders, or add folders manually.
+8. Enable `保存后自动启动监控` and click `保存并应用`.
+9. Click `创建桌面入口` if you want a desktop shortcut.
 
-After saving, `qbee_limiter_monitor.exe` runs in the background. You can close the browser configuration page.
+## Notes
 
-## qB Web UI Notes
-
-The common URL is:
-
-```text
-http://127.0.0.1:8080
-```
-
-If qB allows localhost clients to bypass authentication, you can usually leave username and password empty.
-
-If the URL opens `CEF remote debugging`, Steam may be occupying `127.0.0.1:8080`. Try:
-
-```text
-http://[::1]:8080
-```
-
-If that still fails, change the qB Web UI port to `8081` and set this app to:
-
-```text
-http://127.0.0.1:8081
-```
-
-## How It Works
-
-- `qbee_limiter_config.exe` opens the local browser-based configuration UI.
-- `qbee_limiter_monitor.exe` is the low-memory background monitor.
-- Windows startup launches the monitor, not the configuration UI.
-- The monitor only restores speed limits that it changed itself.
+- qB uses its built-in alternative speed limit switch.
+- Transmission uses its RPC `alt-speed-enabled` switch.
+- aria2 / Motrix uses temporary global speed limits and restores the old values afterward.
+- BitComet is visible in the UI, but automatic speed switching is not enabled until a reliable control path exists.
 
 ## Build
 
@@ -86,8 +74,6 @@ Install Rust and MinGW-w64, then run:
 ```powershell
 .\build.ps1
 ```
-
-Developer docs, UI design notes, and changelog are kept in the repository instead of the release zip.
 
 ## License
 
