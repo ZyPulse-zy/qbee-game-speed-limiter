@@ -1,6 +1,14 @@
 #![allow(dead_code)]
 
+use aes::Aes256;
+use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
+use cbc::cipher::{block_padding::Pkcs7, BlockEncryptMut, KeyIvInit};
+use hmac::{Hmac, Mac};
+use pbkdf2::pbkdf2_hmac;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use sha1::Sha1;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::env;
 use std::fs;
@@ -16,6 +24,9 @@ use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
 use windows_sys::Win32::System::Registry::*;
 use windows_sys::Win32::System::Threading::*;
 
+type Aes256CbcEnc = cbc::Encryptor<Aes256>;
+type HmacSha256 = Hmac<Sha256>;
+
 const RUN_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 const RUN_VALUE: &str = "QbeeLimiterMonitor";
 const MONITOR_MUTEX: &str = "QbeeLimiterMonitor.SingleInstance";
@@ -29,6 +40,7 @@ pub struct AppConfig {
     pub aria2_url: String,
     pub utorrent_url: String,
     pub deluge_url: String,
+    pub bitcomet_url: String,
     pub username: String,
     pub password: String,
     pub aria2_secret: String,
@@ -72,6 +84,7 @@ impl Default for AppConfig {
             aria2_url: "http://127.0.0.1:6800/jsonrpc".into(),
             utorrent_url: "http://127.0.0.1:8080/gui".into(),
             deluge_url: "http://127.0.0.1:8112/json".into(),
+            bitcomet_url: "http://127.0.0.1:80".into(),
             username: "admin".into(),
             password: String::new(),
             aria2_secret: String::new(),
@@ -214,6 +227,9 @@ pub fn load_config() -> AppConfig {
             }
             if config.deluge_url.trim().is_empty() {
                 config.deluge_url = defaults.deluge_url.clone();
+            }
+            if config.bitcomet_url.trim().is_empty() {
+                config.bitcomet_url = defaults.bitcomet_url.clone();
             }
             if config.check_interval_seconds == 0 {
                 config.check_interval_seconds = 5;
@@ -393,6 +409,10 @@ pub enum DownloadLimitSnapshot {
         previous_download: f64,
         previous_upload: f64,
     },
+    BitComet {
+        previous_download: u64,
+        previous_upload: u64,
+    },
 }
 
 pub enum DownloadController {
@@ -412,7 +432,7 @@ impl DownloadController {
             DownloadClientKind::Aria2 => Self::Aria2(Aria2Client::new(config)),
             DownloadClientKind::UTorrent => Self::UTorrent(UTorrentClient::new(config)),
             DownloadClientKind::Deluge => Self::Deluge(DelugeClient::new(config)),
-            DownloadClientKind::BitComet => Self::BitComet(BitCometClient::new()),
+            DownloadClientKind::BitComet => Self::BitComet(BitCometClient::new(config)),
         }
     }
 
@@ -453,7 +473,16 @@ impl DownloadController {
                     config.game_upload_limit_kib
                 ))
             }
-            Self::BitComet(client) => client.test_connection(),
+            Self::BitComet(client) => {
+                let (down, up) = client.current_limits()?;
+                Ok(format!(
+                    "BitComet 连接成功，当前全局限速：下载 {}，上传 {}。游戏中将切换为 {}K / {}K。",
+                    format_byte_limit(down),
+                    format_byte_limit(up),
+                    config.game_download_limit_kib,
+                    config.game_upload_limit_kib
+                ))
+            }
         }
     }
 
@@ -534,7 +563,20 @@ impl DownloadController {
                     ),
                 ))
             }
-            Self::BitComet(client) => client.enable_game_mode(),
+            Self::BitComet(client) => {
+                let (previous_download, previous_upload) = client.current_limits()?;
+                client.set_limits(config.game_download_limit_kib, config.game_upload_limit_kib)?;
+                Ok((
+                    DownloadLimitSnapshot::BitComet {
+                        previous_download,
+                        previous_upload,
+                    },
+                    format!(
+                        "检测到游戏运行，已把 BitComet 全局限速切换为下载 {}K / 上传 {}K。",
+                        config.game_download_limit_kib, config.game_upload_limit_kib
+                    ),
+                ))
+            }
         }
     }
 
@@ -585,6 +627,16 @@ impl DownloadController {
             ) => {
                 client.restore_limits(previous_download, previous_upload)?;
                 Ok("检测到游戏退出，已恢复 Deluge 原来的全局限速。".into())
+            }
+            (
+                Self::BitComet(client),
+                DownloadLimitSnapshot::BitComet {
+                    previous_download,
+                    previous_upload,
+                },
+            ) => {
+                client.restore_limits(previous_download, previous_upload)?;
+                Ok("检测到游戏退出，已恢复 BitComet 原来的全局限速。".into())
             }
             _ => Ok("检测到游戏退出，当前下载器无需恢复。".into()),
         }
@@ -1179,24 +1231,270 @@ fn format_float_limit(value: f64) -> String {
         format!("{value:.0}K")
     }
 }
-pub struct BitCometClient;
 
-impl BitCometClient {
-    pub fn new() -> Self {
-        Self
-    }
-
-    pub fn test_connection(&self) -> Result<String, String> {
-        Err(bitcomet_unsupported_message())
-    }
-
-    pub fn enable_game_mode(&self) -> Result<(DownloadLimitSnapshot, String), String> {
-        Err(bitcomet_unsupported_message())
+fn format_byte_limit(value: u64) -> String {
+    if value == 0 {
+        "不限速".to_string()
+    } else if value % (1024 * 1024) == 0 {
+        format!("{}M", value / 1024 / 1024)
+    } else {
+        format!("{}K", value / 1024)
     }
 }
 
-fn bitcomet_unsupported_message() -> String {
-    "BitComet/比特彗星已加入客户端列表，但当前没有稳定公开的 Web/RPC 限速接口可供自动控制。本工具暂不能可靠自动切换 BitComet 限速；建议先使用 qBittorrent、Transmission 或 aria2，BitComet 自动控制将放到后续 Windows 级限速方案中。".into()
+pub struct BitCometClient {
+    base_url: String,
+    username: String,
+    password: String,
+    agent: ureq::Agent,
+    token: Option<String>,
+    client_id: String,
+}
+
+impl BitCometClient {
+    pub fn new(config: &AppConfig) -> Self {
+        Self {
+            base_url: normalize_bitcomet_url(&config.bitcomet_url),
+            username: config.username.clone(),
+            password: config.password.clone(),
+            agent: ureq::AgentBuilder::new()
+                .timeout_connect(Duration::from_secs(5))
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build(),
+            token: None,
+            client_id: bitcomet_client_id(),
+        }
+    }
+
+    pub fn current_limits(&mut self) -> Result<(u64, u64), String> {
+        let config = self.connection_config()?;
+        let download = json_u64(&config["max_download_speed"]).unwrap_or(0);
+        let upload = json_u64(&config["max_upload_speed"]).unwrap_or(0);
+        Ok((download, upload))
+    }
+
+    pub fn set_limits(&mut self, download_kib: u64, upload_kib: u64) -> Result<(), String> {
+        self.set_limits_bytes(
+            download_kib.saturating_mul(1024),
+            upload_kib.saturating_mul(1024),
+        )
+    }
+
+    pub fn restore_limits(&mut self, download_bps: u64, upload_bps: u64) -> Result<(), String> {
+        self.set_limits_bytes(download_bps, upload_bps)
+    }
+
+    fn set_limits_bytes(&mut self, download_bps: u64, upload_bps: u64) -> Result<(), String> {
+        let mut config = self.connection_config()?;
+        if let Some(object) = config.as_object_mut() {
+            object.insert(
+                "max_download_speed".to_string(),
+                serde_json::json!(download_bps),
+            );
+            object.insert(
+                "max_upload_speed".to_string(),
+                serde_json::json!(upload_bps),
+            );
+        } else {
+            config = serde_json::json!({
+                "max_download_speed": download_bps,
+                "max_upload_speed": upload_bps,
+            });
+        }
+        let value = self.api_post(
+            "/api/config/connection/set",
+            serde_json::json!({ "connection_config": config }),
+        )?;
+        ensure_bitcomet_ok(&value)
+    }
+
+    fn connection_config(&mut self) -> Result<serde_json::Value, String> {
+        let value = self.api_post("/api/config/connection/get", serde_json::json!({}))?;
+        if let Some(error) = bitcomet_error_message(&value) {
+            return Err(error);
+        }
+        let config = value["connection_config"].clone();
+        if config.is_null() {
+            Err("BitComet 返回中没有 connection_config 字段，请确认使用 2.16 或更新版本并启用 WebUI。".into())
+        } else {
+            Ok(config)
+        }
+    }
+
+    fn api_post(
+        &mut self,
+        path: &str,
+        body: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        self.ensure_token()?;
+        let token = self.token.clone().unwrap_or_default();
+        self.post_json(path, body, Some(&token))
+    }
+
+    fn ensure_token(&mut self) -> Result<(), String> {
+        if self.token.is_some() {
+            return Ok(());
+        }
+        if self.username.trim().is_empty() {
+            return Err("BitComet WebUI 需要用户名和密码。请在 BitComet 的“远程访问 / WebUI”里启用 Web 远程访问并填写账号密码。".into());
+        }
+        let login_body = serde_json::json!({
+            "username": self.username.clone(),
+            "password": self.password.clone(),
+        })
+        .to_string();
+        let authentication = bitcomet_encrypt(&login_body, &self.client_id)?;
+        let login_value = self.post_json(
+            "/api/webui/login",
+            serde_json::json!({
+                "client_id": self.client_id.clone(),
+                "authentication": authentication,
+            }),
+            None,
+        )?;
+        if let Some(error) = bitcomet_error_message(&login_value) {
+            return Err(error);
+        }
+        let invite_token = login_value["invite_token"]
+            .as_str()
+            .ok_or_else(|| "BitComet 登录成功响应中没有 invite_token。".to_string())?
+            .to_string();
+        let token_value = self.post_json(
+            "/api/device_token/get",
+            serde_json::json!({
+                "invite_token": invite_token,
+                "device_id": self.client_id.clone(),
+                "device_name": "qbee Game Speed Limiter",
+                "platform": "webui",
+            }),
+            Some(&invite_token),
+        )?;
+        let token = token_value["device_token"]
+            .as_str()
+            .ok_or_else(|| "BitComet 没有返回 device_token，请检查 WebUI 账号密码。".to_string())?
+            .to_string();
+        if token.is_empty() {
+            Err("BitComet 返回了空 device_token，请检查 WebUI 账号密码。".into())
+        } else {
+            self.token = Some(token);
+            Ok(())
+        }
+    }
+
+    fn post_json(
+        &self,
+        path: &str,
+        body: serde_json::Value,
+        bearer: Option<&str>,
+    ) -> Result<serde_json::Value, String> {
+        let url = format!("{}{}", self.base_url, path);
+        let mut req = self
+            .agent
+            .post(&url)
+            .set("User-Agent", "qbee-limiter/7.0")
+            .set("Client-Type", "BitComet WebUI")
+            .set("Content-Type", "application/json");
+        if let Some(token) = bearer {
+            req = req.set("Authorization", &format!("Bearer {token}"));
+        }
+        let response = req
+            .send_string(&body.to_string())
+            .map_err(|err| format!("BitComet WebUI API 失败：{err}"))?;
+        let text = response.into_string().map_err(|err| err.to_string())?;
+        serde_json::from_str(&text).map_err(|err| format!("BitComet 返回不是有效 JSON：{err}"))
+    }
+}
+
+fn normalize_bitcomet_url(url: &str) -> String {
+    url.trim().trim_end_matches('/').to_string()
+}
+
+fn json_u64(value: &serde_json::Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_i64().and_then(|number| u64::try_from(number).ok()))
+        .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+}
+
+fn ensure_bitcomet_ok(value: &serde_json::Value) -> Result<(), String> {
+    match bitcomet_error_message(value) {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+fn bitcomet_error_message(value: &serde_json::Value) -> Option<String> {
+    let code = value["error_code"].as_str()?;
+    if code.eq_ignore_ascii_case("OK") {
+        None
+    } else {
+        Some(format!(
+            "BitComet WebUI 返回错误：{}",
+            value["error_message"].as_str().unwrap_or(code)
+        ))
+    }
+}
+
+fn bitcomet_client_id() -> String {
+    let seed = format!(
+        "qbee-game-speed-limiter:{}:{}",
+        env::var("COMPUTERNAME").unwrap_or_default(),
+        app_dir().display()
+    );
+    let digest = Sha256::digest(seed.as_bytes());
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&digest[..16]);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    format!(
+        "{:02x}{:02x}{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+        bytes[0],
+        bytes[1],
+        bytes[2],
+        bytes[3],
+        bytes[4],
+        bytes[5],
+        bytes[6],
+        bytes[7],
+        bytes[8],
+        bytes[9],
+        bytes[10],
+        bytes[11],
+        bytes[12],
+        bytes[13],
+        bytes[14],
+        bytes[15]
+    )
+}
+
+fn bitcomet_encrypt(plain_text: &str, password: &str) -> Result<String, String> {
+    let mut salt_key = [0u8; 8];
+    let mut salt_hmac = [0u8; 8];
+    let mut iv = [0u8; 16];
+    let mut rng = rand::thread_rng();
+    rng.fill_bytes(&mut salt_key);
+    rng.fill_bytes(&mut salt_hmac);
+    rng.fill_bytes(&mut iv);
+
+    let mut key = [0u8; 32];
+    let mut hmac_key = [0u8; 32];
+    pbkdf2_hmac::<Sha1>(password.as_bytes(), &salt_key, 10_000, &mut key);
+    pbkdf2_hmac::<Sha1>(password.as_bytes(), &salt_hmac, 10_000, &mut hmac_key);
+
+    let ciphertext = Aes256CbcEnc::new(&key.into(), &iv.into())
+        .encrypt_padded_vec_mut::<Pkcs7>(plain_text.as_bytes());
+
+    let mut packet = Vec::with_capacity(2 + 8 + 8 + 16 + ciphertext.len() + 32);
+    packet.extend_from_slice(&[3, 1]);
+    packet.extend_from_slice(&salt_key);
+    packet.extend_from_slice(&salt_hmac);
+    packet.extend_from_slice(&iv);
+    packet.extend_from_slice(&ciphertext);
+    let mut mac = <HmacSha256 as Mac>::new_from_slice(&hmac_key).map_err(|err| err.to_string())?;
+    mac.update(&packet);
+    packet.extend_from_slice(&mac.finalize().into_bytes());
+    Ok(BASE64_STANDARD.encode(packet))
 }
 
 pub fn test_connection(config: &AppConfig) -> Result<String, String> {
@@ -1272,12 +1570,10 @@ pub fn run_diagnostics(config: &AppConfig) -> Vec<DiagnosticItem> {
             check_url(&mut items, "Deluge Web JSON 地址", &config.deluge_url);
             push_game_limit_diag(&mut items, config);
         }
-        DownloadClientKind::BitComet => push_diag(
-            &mut items,
-            "warn",
-            "BitComet 自动控制",
-            "BitComet 已加入列表，但当前没有稳定公开的远程限速 API，本版不会假装自动限速。",
-        ),
+        DownloadClientKind::BitComet => {
+            check_url(&mut items, "BitComet WebUI 地址", &config.bitcomet_url);
+            push_game_limit_diag(&mut items, config);
+        }
     }
 
     let folders: Vec<_> = config

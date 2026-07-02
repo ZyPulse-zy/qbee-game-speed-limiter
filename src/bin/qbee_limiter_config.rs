@@ -257,9 +257,10 @@ const APP_HTML: &str = r#"<!doctype html>
 .shell{max-width:1180px;margin:0 auto;padding:36px 28px 48px}.top{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}.title h1{margin:0;font-size:30px;letter-spacing:-.02em}.title p{margin:6px 0 0;color:var(--muted)}
 .status{min-width:360px;border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:14px;padding:14px 16px}.status b{display:block;font-size:13px}.status span{display:block;color:var(--muted);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grid{display:grid;grid-template-columns:minmax(0,1.1fr) 340px;gap:18px}.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.02));border-radius:14px;padding:18px;transition:border-color .18s ease,transform .18s ease}.card:hover{border-color:rgba(255,255,255,.14);transform:translateY(-1px)}.card h2{font-size:15px;margin:0 0 16px}.field{display:grid;gap:6px;margin-bottom:14px}.field label{font-size:12px;color:var(--muted)}input,textarea,select{width:100%;border:1px solid var(--line);background:#0b0c10;color:var(--text);border-radius:9px;padding:10px 12px;outline:none;transition:border-color .16s ease,box-shadow .16s ease}input:focus,textarea:focus,select:focus{border-color:rgba(94,106,210,.65);box-shadow:0 0 0 3px rgba(94,106,210,.16)}textarea{min-height:168px;resize:vertical;font-family:"JetBrains Mono","Consolas",monospace;font-size:12px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.checks{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 12px}.check{display:flex;align-items:center;gap:8px;color:var(--muted)}.check input{width:auto}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.checks{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0 12px}.check{display:flex;align-items:center;gap:8px;color:var(--muted)}.check input{width:auto}
 .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:9px;padding:10px 14px;cursor:pointer;transition:transform .14s ease,background .14s ease,border-color .14s ease}.btn:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.18)}.btn:active{transform:translateY(0)}.btn.primary{background:var(--accent);border-color:rgba(255,255,255,.12)}.btn.good{background:rgba(50,213,131,.12);border-color:rgba(50,213,131,.35)}.btn:disabled{opacity:.55;cursor:not-allowed}
 .pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:6px 10px;color:var(--muted);font-size:12px}.dot{width:8px;height:8px;border-radius:50%;background:var(--dim)}.dot.on{background:var(--ok)}.dot.busy{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.busy{animation:pulse 1s infinite}@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(253,176,34,.4)}50%{box-shadow:0 0 0 6px rgba(253,176,34,0)}}.hint{margin:-6px 0 14px;color:var(--muted);font-size:12px}
+[hidden]{display:none!important}.client-field{animation:fadeIn .16s ease}.section-label{margin:4px 0 10px;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 .list{display:grid;gap:8px;max-height:260px;overflow:auto}.item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-radius:9px;background:#0b0c10;padding:9px 10px}.item code{font-family:"JetBrains Mono","Consolas",monospace;font-size:12px;color:#d8dcff;overflow:hidden;text-overflow:ellipsis}.item button{border:0;background:transparent;color:var(--muted);cursor:pointer}
 .log{font-family:"JetBrains Mono","Consolas",monospace;font-size:12px;color:var(--muted);white-space:pre-wrap;min-height:80px}.footer{margin-top:18px;color:var(--dim);font-size:12px}
 @media(max-width:900px){.grid{grid-template-columns:1fr}.top{display:block}.status{min-width:0;margin-top:16px}}
@@ -276,20 +277,22 @@ const APP_HTML: &str = r#"<!doctype html>
       <h2>连接设置</h2>
       <div class="field"><label>下载客户端</label><select id="client" onchange="updateClientHelp()"><option value="qbittorrent">qBittorrent / qBittorrent EE</option><option value="transmission">Transmission</option><option value="aria2">aria2 / Motrix</option><option value="utorrent">µTorrent / BitTorrent Classic</option><option value="deluge">Deluge</option><option value="bitcomet">BitComet / 比特彗星</option></select></div>
       <p class="hint" id="clientHelp">qB 使用备用速度限制开关，适合 qBittorrent 与 qBittorrent Enhanced Edition。</p>
-      <div class="field"><label>qB Web UI 地址</label><input id="qbee_url"></div>
-      <div class="field"><label>Transmission RPC 地址</label><input id="transmission_url"></div>
-      <div class="field"><label>aria2 JSON-RPC 地址</label><input id="aria2_url"></div>
-      <div class="field"><label>µTorrent / BitTorrent Web UI 地址</label><input id="utorrent_url"></div>
-      <div class="field"><label>Deluge Web JSON 地址</label><input id="deluge_url"></div>
+      <div class="section-label">当前客户端</div>
+      <div class="field client-field" data-clients="qbittorrent"><label>qB Web UI 地址</label><input id="qbee_url"></div>
+      <div class="field client-field" data-clients="transmission"><label>Transmission RPC 地址</label><input id="transmission_url"></div>
+      <div class="field client-field" data-clients="aria2"><label>aria2 JSON-RPC 地址</label><input id="aria2_url"></div>
+      <div class="field client-field" data-clients="utorrent"><label>µTorrent / BitTorrent Web UI 地址</label><input id="utorrent_url"></div>
+      <div class="field client-field" data-clients="deluge"><label>Deluge Web JSON 地址</label><input id="deluge_url"></div>
+      <div class="field client-field" data-clients="bitcomet"><label>BitComet WebUI 地址</label><input id="bitcomet_url"></div>
       <div class="row">
-        <div class="field"><label>用户名</label><input id="username"></div>
-        <div class="field"><label>密码</label><input id="password" type="password"></div>
+        <div class="field client-field" data-clients="qbittorrent transmission utorrent bitcomet"><label>用户名</label><input id="username"></div>
+        <div class="field client-field" data-clients="qbittorrent transmission utorrent deluge bitcomet"><label>密码</label><input id="password" type="password"></div>
       </div>
       <div class="row">
-        <div class="field"><label>aria2 Secret（可选）</label><input id="aria2_secret" type="password"></div>
+        <div class="field client-field" data-clients="aria2"><label>aria2 Secret（可选）</label><input id="aria2_secret" type="password"></div>
         <div class="field"><label>检测间隔（秒）</label><input id="interval" type="number" min="1"></div>
       </div>
-      <div class="row">
+      <div class="row client-field" data-clients="aria2 utorrent deluge bitcomet">
         <div class="field"><label>游戏中下载限速（KiB/s）</label><input id="download_limit" type="number" min="1"></div>
         <div class="field"><label>游戏中上传限速（KiB/s）</label><input id="upload_limit" type="number" min="1"></div>
       </div>
@@ -337,9 +340,16 @@ function updateClientHelp(){
     aria2:'aria2 / Motrix 没有备用限速开关，本工具会在游戏中临时切换全局上下行限速，退出后恢复原值。',
     utorrent:'µTorrent / BitTorrent Classic 使用 Web UI API 临时修改全局上下行限速，退出游戏后恢复原值。',
     deluge:'Deluge 使用 Web JSON-RPC 临时修改全局上下行限速，退出游戏后恢复原值。Deluge Web 通常只需要密码。',
-    bitcomet:'BitComet / 比特彗星已加入列表，但当前缺少稳定公开的远程限速 API，本版会明确提示而不会假装自动控制。'
+    bitcomet:'BitComet / 比特彗星使用新版 WebUI 的连接配置接口临时修改全局上下行限速，退出游戏后恢复原值。需要启用远程访问并填写实际端口。'
   };
   $('clientHelp').textContent = messages[value] || messages.qbittorrent;
+  updateVisibleFields(value);
+}
+function updateVisibleFields(value){
+  document.querySelectorAll('[data-clients]').forEach(el => {
+    const allowed = (el.dataset.clients || '').split(/\s+/).filter(Boolean);
+    el.hidden = !allowed.includes(value);
+  });
 }
 function configFromForm(){
   return {
@@ -350,6 +360,7 @@ function configFromForm(){
     aria2_url:$('aria2_url').value.trim(),
     utorrent_url:$('utorrent_url').value.trim(),
     deluge_url:$('deluge_url').value.trim(),
+    bitcomet_url:$('bitcomet_url').value.trim(),
     username:$('username').value,
     password:$('password').value,
     aria2_secret:$('aria2_secret').value,
@@ -381,6 +392,7 @@ function fillForm(data){
   $('aria2_url').value = config.aria2_url || 'http://127.0.0.1:6800/jsonrpc';
   $('utorrent_url').value = config.utorrent_url || 'http://127.0.0.1:8080/gui';
   $('deluge_url').value = config.deluge_url || 'http://127.0.0.1:8112/json';
+  $('bitcomet_url').value = config.bitcomet_url || 'http://127.0.0.1:80';
   $('username').value = config.username || '';
   $('password').value = config.password || '';
   $('aria2_secret').value = config.aria2_secret || '';

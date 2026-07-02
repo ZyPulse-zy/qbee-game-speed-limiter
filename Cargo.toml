@@ -1,6 +1,6 @@
 [package]
 name = "qbee-game-speed-limiter"
-version = "0.3.3"
+version = "0.3.4"
 edition = "2021"
 
 [profile.release]
@@ -11,9 +11,17 @@ panic = "abort"
 strip = true
 
 [dependencies]
+aes = "0.8"
+base64 = "0.22"
+cbc = { version = "0.1", features = ["alloc"] }
+hmac = "0.12"
+pbkdf2 = "0.12"
+rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-ureq = "2"
+sha1 = "0.10"
+sha2 = "0.10"
+ureq = { version = "2", default-features = false, features = ["gzip", "native-tls"] }
 windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",

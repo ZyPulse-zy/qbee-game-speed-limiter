@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.3.4
+
+- Added automatic global speed-limit control for BitComet through its newer WebUI connection configuration API.
+- Added BitComet address, username/password, diagnostics, test-connection, game-mode, and restore support across the config UI and monitor.
+- Simplified the configuration UI so only fields relevant to the selected download client are shown.
+- Added a small transition for client-specific fields to keep the browser configuration page feeling responsive without adding runtime weight.
+- Updated user-facing docs to explain that qB/Transmission use their own alternative limit settings while aria2/µTorrent/Deluge/BitComet use the shared game-speed values.
+
 ## v0.3.3
 
 - Added double-clickable `install.cmd` and `uninstall.cmd` wrappers for easier first-time setup and cleanup on Windows.

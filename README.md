@@ -19,7 +19,7 @@ Automatically throttle torrent/magnet download clients while you play games, the
 | aria2 / Motrix | Supported | Temporarily changes global upload/download limits, then restores them |
 | µTorrent / BitTorrent Classic | Supported | Temporarily changes global upload/download limits, then restores them |
 | Deluge | Supported | Temporarily changes global upload/download limits, then restores them |
-| BitComet | Listed, not auto-controlled yet | BitComet lacks a stable public remote speed-limit API, so the app shows a clear warning instead of pretending it works |
+| BitComet | Supported through the newer WebUI | Temporarily changes global upload/download limits, then restores them |
 
 ## Why Use It?
 
@@ -30,15 +30,16 @@ This tool detects when a game is running, applies a downloader-specific game-spe
 ## Highlights
 
 - Supports Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame and common game folders.
-- Supports qB, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, and Deluge, with honest BitComet status messaging.
+- Supports qB, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, and BitComet.
 - Starts the low-memory monitor with Windows.
 - Keeps the configuration UI separate from the background monitor.
 - Can create a desktop shortcut from the configuration UI.
 - Windows executables and shortcuts use the project app icon.
+- The configuration page only shows fields relevant to the selected download client.
 - Includes a self-check tool for missing files, invalid URLs, game folder problems, stale monitor status, and startup settings.
 - Includes portable install/uninstall scripts without requiring administrator permissions.
 - Does not overwrite qB / Transmission alternative speed limits that you enabled manually.
-- Restores previous global limits for aria2, µTorrent / BitTorrent, and Deluge after the game exits.
+- Restores previous global limits for aria2, µTorrent / BitTorrent, Deluge, and BitComet after the game exits.
 
 ## Download
 
@@ -74,8 +75,8 @@ LICENSE
 
 - qB uses its built-in alternative speed limit switch.
 - Transmission uses its RPC `alt-speed-enabled` switch.
-- aria2 / Motrix, µTorrent / BitTorrent Classic, and Deluge use temporary global speed limits and restore the old values afterward.
-- BitComet is visible in the UI, but automatic speed switching is not enabled until a reliable control path exists.
+- aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, and BitComet use temporary global speed limits and restore the old values afterward.
+- BitComet requires its remote access / WebUI to be enabled. BitComet 2.16 or newer is recommended.
 
 ## Build
 

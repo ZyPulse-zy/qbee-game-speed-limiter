@@ -2,14 +2,16 @@
 
 适合一边挂 BT / PT / 磁力下载、一边玩联机游戏的 Windows 用户。
 
-## v0.3.3 重点
+## v0.3.4 重点
 
+- 配置页会根据所选下载客户端只显示相关输入项，减少新手误填。
+- qB / Transmission 不再展示无关的“游戏中限速值”；aria2、µTorrent / BitTorrent、Deluge、BitComet 才显示这组全局限速。
 - 新增可双击的 `install.cmd` / `uninstall.cmd`，新手不用再右键运行 PowerShell 脚本。
 - 应用图标已嵌入 Windows exe，桌面入口和任务栏显示会更完整。
 - 快捷入口名称统一为 `qbee 游戏限速助手`，卸载脚本仍会清理旧版入口。
-- 已支持自动限速：qBittorrent / qBEE、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge。
-- qB 和 Transmission 会自动切换备用限速；aria2、µTorrent / BitTorrent、Deluge 会临时切换全局上下行限速并在游戏退出后恢复。
-- BitComet / 比特彗星已加入主流客户端列表，但由于缺少稳定公开远程限速 API，本版会明确提示暂不自动控制。
+- 已支持自动限速：qBittorrent / qBEE、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge、BitComet / 比特彗星。
+- qB 和 Transmission 会自动切换备用限速；aria2、µTorrent / BitTorrent、Deluge、BitComet 会临时切换全局上下行限速并在游戏退出后恢复。
+- BitComet / 比特彗星通过新版 WebUI 连接配置接口控制全局限速，需要在 BitComet 里启用远程访问 / WebUI，建议使用 2.16 或更新版本。
 - 配置界面增加轻量动画、下载器选择、统一游戏中限速值、“运行自检”和“创建桌面入口”。
 - 发行包包含 `install.ps1` / `uninstall.ps1`，可创建桌面和开始菜单入口，不需要管理员权限。
 

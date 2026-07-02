@@ -25,21 +25,20 @@
 | aria2 / Motrix | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
 | µTorrent / BitTorrent Classic | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
 | Deluge | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
-| BitComet / 比特彗星 | 已加入主流客户端列表，暂不自动控制 | 当前缺少稳定公开的远程限速 API，本版会明确提示，不会假装成功 |
-
-如果你主要用 BitComet，当前版本可以先作为游戏检测和状态工具使用；自动限速需要后续走 Windows 级进程限速方案，或等待 BitComet 提供稳定远程接口。
+| BitComet / 比特彗星 | 已支持（新版 WebUI） | 临时修改全局上下行限速，退出游戏后恢复 |
 
 ## 主要特点
 
 - 支持 Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame 等常见游戏目录。
-- 支持 qB、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge，并对 BitComet 给出明确状态说明。
+- 支持 qB、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge、BitComet / 比特彗星等主流下载客户端。
 - 支持 Windows 开机自启动。
 - 后台监控独立运行，低占用。
 - 配置界面用完可关，不影响后台监控。
 - 不会覆盖你原本手动开启的 qB / Transmission 备用限速状态。
-- 对 aria2、µTorrent / BitTorrent、Deluge 会记录原来的全局限速，游戏退出后恢复。
+- 对 aria2、µTorrent / BitTorrent、Deluge、BitComet 会记录原来的全局限速，游戏退出后恢复。
 - 可一键创建桌面入口，减少下次查找程序的麻烦。
 - Windows exe 和快捷入口使用项目应用图标。
+- 配置页会按所选下载客户端只显示相关输入项，减少误填。
 - 内置“运行自检”，能提示文件缺失、地址错误、游戏库路径无效、后台状态异常等常见问题。
 - 附带便携安装/卸载脚本，不需要管理员权限。
 
@@ -101,7 +100,11 @@ Deluge：启用 Deluge Web，JSON 地址通常是：
 http://127.0.0.1:8112/json
 ```
 
-BitComet / 比特彗星：当前没有稳定公开的远程限速 API，本工具会提示当前限制，暂不自动限速。
+BitComet / 比特彗星：启用远程访问 / WebUI。建议使用 BitComet 2.16 或更新版本。地址填写你在 BitComet 中设置的实际端口，例如：
+
+```text
+http://127.0.0.1:80
+```
 
 ### 2. 安装或打开配置界面
 
@@ -124,7 +127,9 @@ qbee_limiter_config.exe
 - aria2 / Motrix：填写 JSON-RPC 地址；如果设置了 RPC Secret，也要填入。
 - µTorrent / BitTorrent Classic：填写 Web UI 地址、用户名、密码。
 - Deluge：填写 Deluge Web JSON 地址；通常只需要填写密码。
-- BitComet：本版会明确提示暂不支持自动限速。
+- BitComet：填写 BitComet WebUI 地址、用户名、密码，并设置游戏中的下载/上传限速。
+
+配置页只会显示当前客户端需要的输入项。qB 和 Transmission 的具体限速值请在下载器自己的“备用限速”里设置；aria2、µTorrent / BitTorrent、Deluge、BitComet 使用配置页里的“游戏中下载/上传限速”。
 
 如果 qB 设置了 localhost 免验证，可以先把用户名和密码留空，然后点“测试连接”。
 
@@ -165,7 +170,7 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 - 检测到游戏运行后，工具会自动进入游戏限速模式。
 - 游戏退出后，工具会自动恢复它改动过的下载器状态。
 
-如果游戏启动前你已经手动打开了 qB / Transmission 备用限速，工具会尊重你的手动设置，游戏退出后不会帮你关掉。对 aria2、µTorrent / BitTorrent、Deluge 这类全局限速型客户端，工具会在进入游戏前记录原值，游戏退出后恢复。
+如果游戏启动前你已经手动打开了 qB / Transmission 备用限速，工具会尊重你的手动设置，游戏退出后不会帮你关掉。对 aria2、µTorrent / BitTorrent、Deluge、BitComet 这类全局限速型客户端，工具会在进入游戏前记录原值，游戏退出后恢复。
 
 ## 运行自检会检查什么？
 
@@ -177,7 +182,7 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 - 游戏库目录是否为空，路径是否真实存在。
 - 后台监控是否正在运行，状态是否长时间未更新。
 - 是否启用了开机自启动。
-- 当前客户端是否需要额外准备远程接口，BitComet 是否只能提示、不能自动控制。
+- 当前客户端是否需要额外准备远程接口，BitComet WebUI 地址和游戏限速值是否完整。
 
 如果你不确定哪里填错了，先点“运行自检”。
 
@@ -213,11 +218,13 @@ http://127.0.0.1:8081
 
 ### 游戏中限速填多少？
 
-对 aria2、µTorrent / BitTorrent、Deluge，建议从下载 `512 KiB/s`、上传 `128 KiB/s` 开始。网速较高可以适当调大；如果联机游戏仍然延迟高，就继续降低上传限速。
+对 aria2、µTorrent / BitTorrent、Deluge、BitComet，建议从下载 `512 KiB/s`、上传 `128 KiB/s` 开始。网速较高可以适当调大；如果联机游戏仍然延迟高，就继续降低上传限速。
 
-### BitComet 为什么不能自动限速？
+### BitComet 怎么设置？
 
-BitComet / 比特彗星目前没有像 qB、Transmission、aria2、µTorrent、Deluge 那样稳定公开、适合自动化的远程限速 API。为了避免误导用户，本版会明确提示“暂不自动控制”，不会显示假成功。后续可以考虑 Windows 级进程限速方案来覆盖 BitComet。
+BitComet / 比特彗星需要先在客户端里启用远程访问 / WebUI，然后在本工具里选择 `BitComet / 比特彗星`，填写 WebUI 地址、用户名、密码。建议使用 BitComet 2.16 或更新版本。
+
+如果“测试连接”失败，先在浏览器打开你填写的地址，确认能看到 BitComet WebUI；再检查端口、用户名、密码是否和 BitComet 设置一致。
 
 ### 自动扫描没有找到所有游戏
 
@@ -237,7 +244,7 @@ BitComet / 比特彗星目前没有像 qB、Transmission、aria2、µTorrent、D
 
 ## 后续计划
 
-后续更适合截图展示、也更能提升长期使用体验的功能包括：系统托盘图标、Windows 通知、最近触发记录、每个游戏单独限速值、Windows 级进程限速以覆盖 BitComet、迅雷等没有稳定公开 API 的客户端。
+后续更适合截图展示、也更能提升长期使用体验的功能包括：系统托盘图标、Windows 通知、最近触发记录、每个游戏单独限速值，以及对迅雷等没有稳定公开 API 的客户端探索 Windows 级进程限速方案。
 
 ## 卸载
 
