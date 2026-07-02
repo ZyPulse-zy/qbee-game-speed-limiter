@@ -6,7 +6,7 @@
 
 Automatically throttle torrent/magnet download clients while you play games, then restore speeds after exit. Built for Windows users who keep BT/PT downloads running in the background.
 
-[Download for Windows](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases/latest) · [中文教程](README.zh-CN.md) · [FAQ](README.zh-CN.md#常见问题)
+[Download for Windows](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [中文教程](README.zh-CN.md) · [FAQ](README.zh-CN.md#常见问题)
 
 ![Configuration UI screenshot](docs/config-ui.png)
 
@@ -43,7 +43,7 @@ This tool detects when a game is running, applies a downloader-specific game-spe
 
 ## Download
 
-Download `download-client-game-speed-limiter-windows.zip` from the [Releases page](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases).
+Download `download-client-game-speed-limiter-windows.zip` from the [Releases page](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
 
 The zip contains only the end-user files:
 

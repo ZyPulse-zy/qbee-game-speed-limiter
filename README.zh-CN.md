@@ -6,7 +6,7 @@
 
 玩游戏时自动降低下载器下载和上传速度，退出游戏后自动恢复。适合一边挂 BT / PT / 磁力下载，一边玩联机游戏、语音聊天或直播的 Windows 用户。
 
-[立即下载 Windows 版](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases/latest) · [第一次使用教程](#第一次使用) · [支持的下载客户端](#支持的下载客户端) · [常见问题](#常见问题)
+[立即下载 Windows 版](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [第一次使用教程](#第一次使用) · [支持的下载客户端](#支持的下载客户端) · [常见问题](#常见问题)
 
 ![配置界面截图](docs/config-ui.png)
 
@@ -44,7 +44,7 @@
 
 ## 下载哪个文件
 
-打开 [Releases 页面](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases)，下载：
+打开 [Releases 页面](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases)，下载：
 
 ```text
 download-client-game-speed-limiter-windows.zip
