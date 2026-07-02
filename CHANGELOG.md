@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.3.3
+
+- Added double-clickable `install.cmd` and `uninstall.cmd` wrappers for easier first-time setup and cleanup on Windows.
+- Included the CMD wrappers in Build and Release packages.
+- Updated the beginner setup guide to prefer `install.cmd` while keeping the PowerShell scripts for advanced use.
+
 ## v0.3.2
 
 - Added a multi-size Windows `.ico` derived from the project icon.

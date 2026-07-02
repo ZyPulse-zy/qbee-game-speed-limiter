@@ -2,8 +2,9 @@
 
 适合一边挂 BT / PT / 磁力下载、一边玩联机游戏的 Windows 用户。
 
-## v0.3.2 重点
+## v0.3.3 重点
 
+- 新增可双击的 `install.cmd` / `uninstall.cmd`，新手不用再右键运行 PowerShell 脚本。
 - 应用图标已嵌入 Windows exe，桌面入口和任务栏显示会更完整。
 - 快捷入口名称统一为 `qbee 游戏限速助手`，卸载脚本仍会清理旧版入口。
 - 已支持自动限速：qBittorrent / qBEE、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge。
@@ -20,4 +21,4 @@
 qbee-game-speed-limiter-windows.zip
 ```
 
-解压后可先运行 `install.ps1` 创建快捷入口，也可以直接双击 `qbee_limiter_config.exe`。按中文说明选择下载客户端并自动扫描游戏库。
+解压后建议先双击 `install.cmd` 创建快捷入口并打开配置界面，也可以直接双击 `qbee_limiter_config.exe` 便携使用。按中文说明选择下载客户端并自动扫描游戏库。

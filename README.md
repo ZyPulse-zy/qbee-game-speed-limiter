@@ -50,7 +50,9 @@ The zip contains only the end-user files:
 qbee_limiter_config.exe
 qbee_limiter_monitor.exe
 qbee_game_speed_limiter.json
+install.cmd
 install.ps1
+uninstall.cmd
 uninstall.ps1
 README.zh-CN.md
 LICENSE
@@ -59,7 +61,7 @@ LICENSE
 ## Quick Start
 
 1. Enable your download client's remote control interface.
-2. Extract the zip and run `install.ps1`, or run `qbee_limiter_config.exe` directly for portable use.
+2. Extract the zip and double-click `install.cmd`, or run `qbee_limiter_config.exe` directly for portable use.
 3. Run `qbee_limiter_config.exe`.
 4. Choose qBittorrent, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, or BitComet in the client selector.
 5. Enter the URL, username/password, or aria2 secret as needed. Deluge usually only needs the Web password.

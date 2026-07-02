@@ -57,13 +57,15 @@ qbee-game-speed-limiter-windows.zip
 qbee_limiter_config.exe
 qbee_limiter_monitor.exe
 qbee_game_speed_limiter.json
+install.cmd
 install.ps1
+uninstall.cmd
 uninstall.ps1
 README.zh-CN.md
 LICENSE
 ```
 
-推荐先右键运行 `install.ps1`（或在 PowerShell 中运行），它会创建桌面和开始菜单入口；也可以直接双击 `qbee_limiter_config.exe` 使用。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
+推荐先双击 `install.cmd`，它会自动创建桌面和开始菜单入口，并打开配置界面；也可以直接双击 `qbee_limiter_config.exe` 便携使用。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
 
 ## 第一次使用
 
@@ -103,7 +105,7 @@ BitComet / 比特彗星：当前没有稳定公开的远程限速 API，本工�
 
 ### 2. 安装或打开配置界面
 
-推荐方式：右键 `install.ps1`，选择“使用 PowerShell 运行”。它会创建桌面入口和开始菜单入口。
+推荐方式：双击 `install.cmd`。它会创建桌面入口和开始菜单入口，并自动打开配置界面。
 
 如果你不想安装，也可以直接双击：
 
@@ -242,10 +244,10 @@ BitComet / 比特彗星目前没有像 qB、Transmission、aria2、µTorrent、D
 运行：
 
 ```powershell
-.\uninstall.ps1
+.\uninstall.cmd
 ```
 
-它会停止后台监控，删除桌面/开始菜单入口，并移除开机启动项。配置文件默认保留，你可以手动删除整个解压目录来彻底清理。
+它会停止后台监控，删除桌面/开始菜单入口，并移除开机启动项。配置文件默认保留，你可以手动删除整个解压目录来彻底清理。高级用户也可以直接运行 `uninstall.ps1`。
 
 ## 开发者
 
