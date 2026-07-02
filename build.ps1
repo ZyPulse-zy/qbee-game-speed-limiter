@@ -15,11 +15,11 @@ if (-not $cargoExe) {
 }
 
 $target = "x86_64-pc-windows-gnu"
-& $cargoExe build --release --target $target --bin qbee-limiter-monitor --bin qbee-limiter-config
+& $cargoExe build --release --target $target --bin download-limiter-monitor --bin download-limiter-config
 
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Copy-Item "target\$target\release\qbee-limiter-monitor.exe" "qbee_limiter_monitor.exe" -Force
-Copy-Item "target\$target\release\qbee-limiter-config.exe" "qbee_limiter_config.exe" -Force
+Copy-Item "target\$target\release\download-limiter-monitor.exe" "download_limiter_monitor.exe" -Force
+Copy-Item "target\$target\release\download-limiter-config.exe" "download_limiter_config.exe" -Force

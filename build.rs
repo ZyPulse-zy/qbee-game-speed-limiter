@@ -9,7 +9,7 @@ fn main() {
     }
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let resource = out_dir.join("qbee_app_icon.o");
+    let resource = out_dir.join("download_client_app_icon.o");
     let windres = env::var("WINDRES").unwrap_or_else(|_| "windres".to_string());
 
     let status = Command::new(&windres)

@@ -1,6 +1,6 @@
 [package]
-name = "qbee-game-speed-limiter"
-version = "0.3.4"
+name = "download-client-game-speed-limiter"
+version = "0.3.5"
 edition = "2021"
 
 [profile.release]
@@ -41,9 +41,9 @@ windows-sys = { version = "0.59", features = [
 ] }
 
 [[bin]]
-name = "qbee-limiter-config"
-path = "src/bin/qbee_limiter_config.rs"
+name = "download-limiter-config"
+path = "src/bin/download_limiter_config.rs"
 
 [[bin]]
-name = "qbee-limiter-monitor"
-path = "src/bin/qbee_limiter_monitor.rs"
+name = "download-limiter-monitor"
+path = "src/bin/download_limiter_monitor.rs"

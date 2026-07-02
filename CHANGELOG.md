@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.3.5
+
+- Renamed the project to Download Client Game Speed Limiter / 下载器游戏限速助手 so the name no longer implies qB-only support.
+- Renamed release assets, Windows executables, config/status/stop files, shortcuts, and startup entry to use the broader download-client branding.
+- Added migration compatibility for existing `qbee_game_speed_limiter.json` configs and legacy stop files.
+- Updated README and release notes with the new repository name, package name, and beginner setup paths.
+
 ## v0.3.4
 
 - Added automatic global speed-limit control for BitComet through its newer WebUI connection configuration API.

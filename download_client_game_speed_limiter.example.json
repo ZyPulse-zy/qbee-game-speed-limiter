@@ -53,7 +53,7 @@
     "restore_on_exit":  true,
     "start_with_windows":  false,
     "auto_start_monitor":  true,
-    "log_file":  "qbee_game_speed_limiter.log",
+    "log_file":  "download_client_game_speed_limiter.log",
     "download_client":  "qbittorrent",
     "transmission_url":  "http://127.0.0.1:9091/transmission/rpc",
     "aria2_url":  "http://127.0.0.1:6800/jsonrpc",

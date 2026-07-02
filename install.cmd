@@ -1,9 +1,9 @@
 @echo off
 setlocal
-title qbee Game Speed Limiter Installer
+title Download Client Game Speed Limiter Installer
 cd /d "%~dp0"
 
-echo Installing qbee Game Speed Limiter shortcuts...
+echo Installing Download Client Game Speed Limiter shortcuts...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -StartConfig
 if errorlevel 1 (
   echo.

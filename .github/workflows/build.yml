@@ -35,9 +35,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item qbee_limiter_config.exe dist\
-          Copy-Item qbee_limiter_monitor.exe dist\
-          Copy-Item qbee_game_speed_limiter.example.json dist\qbee_game_speed_limiter.json
+          Copy-Item download_limiter_config.exe dist\
+          Copy-Item download_limiter_monitor.exe dist\
+          Copy-Item download_client_game_speed_limiter.example.json dist\download_client_game_speed_limiter.json
           Copy-Item README.zh-CN.md dist\
           Copy-Item install.cmd dist\
           Copy-Item install.ps1 dist\
@@ -48,5 +48,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qbee-game-speed-limiter-windows
+          name: download-client-game-speed-limiter-windows
           path: dist/*

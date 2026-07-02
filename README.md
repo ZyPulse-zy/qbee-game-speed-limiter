@@ -1,4 +1,4 @@
-# qbee Game Speed Limiter
+# Download Client Game Speed Limiter
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
@@ -6,7 +6,7 @@
 
 Automatically throttle torrent/magnet download clients while you play games, then restore speeds after exit. Built for Windows users who keep BT/PT downloads running in the background.
 
-[Download for Windows](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [中文教程](README.zh-CN.md) · [FAQ](README.zh-CN.md#常见问题)
+[Download for Windows](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases/latest) · [中文教程](README.zh-CN.md) · [FAQ](README.zh-CN.md#常见问题)
 
 ![Configuration UI screenshot](docs/config-ui.png)
 
@@ -43,14 +43,14 @@ This tool detects when a game is running, applies a downloader-specific game-spe
 
 ## Download
 
-Download `qbee-game-speed-limiter-windows.zip` from the [Releases page](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases).
+Download `download-client-game-speed-limiter-windows.zip` from the [Releases page](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases).
 
 The zip contains only the end-user files:
 
 ```text
-qbee_limiter_config.exe
-qbee_limiter_monitor.exe
-qbee_game_speed_limiter.json
+download_limiter_config.exe
+download_limiter_monitor.exe
+download_client_game_speed_limiter.json
 install.cmd
 install.ps1
 uninstall.cmd
@@ -59,17 +59,18 @@ README.zh-CN.md
 LICENSE
 ```
 
+Older `qbee_game_speed_limiter.json` files are imported automatically on first launch, so existing users do not need to re-enter downloader credentials.
+
 ## Quick Start
 
 1. Enable your download client's remote control interface.
-2. Extract the zip and double-click `install.cmd`, or run `qbee_limiter_config.exe` directly for portable use.
-3. Run `qbee_limiter_config.exe`.
-4. Choose qBittorrent, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, or BitComet in the client selector.
-5. Enter the URL, username/password, or aria2 secret as needed. Deluge usually only needs the Web password.
-6. Click `测试连接`.
-7. Click `自动扫描` to find game library folders, or add folders manually.
-8. Enable `保存后自动启动监控` and click `保存并应用`.
-9. Click `运行自检` if anything looks wrong, then click `创建桌面入口` if you want a desktop shortcut.
+2. Extract the zip and double-click `install.cmd`, or run `download_limiter_config.exe` directly for portable use.
+3. Choose qBittorrent, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, or BitComet in the client selector.
+4. Enter the URL, username/password, or aria2 secret as needed. Deluge usually only needs the Web password.
+5. Click `测试连接`.
+6. Click `自动扫描` to find game library folders, or add folders manually.
+7. Enable `保存后自动启动监控` and click `保存并应用`.
+8. Click `运行自检` if anything looks wrong, then click `创建桌面入口` if you want a desktop shortcut.
 
 ## Notes
 

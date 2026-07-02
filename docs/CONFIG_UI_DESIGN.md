@@ -1,4 +1,4 @@
-# qbee Limiter Config UI v0
+# Download Client Game Speed Limiter Config UI
 
 This design follows the installed `web-design-engineer` workflow and uses the Linear modern-tool recipe as the anchor.
 
@@ -31,13 +31,13 @@ This design follows the installed `web-design-engineer` workflow and uses the Li
 - Saving: header says `正在保存配置`.
 - Testing: header says `正在测试连接`.
 - Scan: header says `正在扫描游戏库`.
-- Running: green status dot, message from `qbee_limiter_status.json`.
+- Running: green status dot, message from `download_limiter_status.json`.
 - Stopping: amber status dot and log message.
 - Error: red status dot and error text in the log area.
 
 ## Implementation Notes
 
-- Config UI runs as `qbee_limiter_config.exe`, serving a local HTML app on `127.0.0.1`.
-- Background monitor runs as `qbee_limiter_monitor.exe` with no window.
+- Config UI runs as `download_limiter_config.exe`, serving a local HTML app on `127.0.0.1`.
+- Background monitor runs as `download_limiter_monitor.exe` with no window.
 - Saving config can automatically launch the monitor when `auto_start_monitor` is enabled.
 - Startup registration points to the monitor exe, not the config UI.

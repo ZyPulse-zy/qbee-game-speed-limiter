@@ -1,9 +1,9 @@
 @echo off
 setlocal
-title qbee Game Speed Limiter Uninstaller
+title Download Client Game Speed Limiter Uninstaller
 cd /d "%~dp0"
 
-echo Removing qbee Game Speed Limiter shortcuts and startup entry...
+echo Removing Download Client Game Speed Limiter shortcuts and startup entry...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0uninstall.ps1"
 if errorlevel 1 (
   echo.

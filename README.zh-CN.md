@@ -1,4 +1,4 @@
-# qbee 游戏限速助手
+# 下载器游戏限速助手
 
 [English](README.md) | 简体中文
 
@@ -6,7 +6,7 @@
 
 玩游戏时自动降低下载器下载和上传速度，退出游戏后自动恢复。适合一边挂 BT / PT / 磁力下载，一边玩联机游戏、语音聊天或直播的 Windows 用户。
 
-[立即下载 Windows 版](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases/latest) · [第一次使用教程](#第一次使用) · [支持的下载客户端](#支持的下载客户端) · [常见问题](#常见问题)
+[立即下载 Windows 版](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases/latest) · [第一次使用教程](#第一次使用) · [支持的下载客户端](#支持的下载客户端) · [常见问题](#常见问题)
 
 ![配置界面截图](docs/config-ui.png)
 
@@ -44,18 +44,18 @@
 
 ## 下载哪个文件
 
-打开 [Releases 页面](https://github.com/ZyPulse-zy/qbee-game-speed-limiter/releases)，下载：
+打开 [Releases 页面](https://github.com/ZyPulse-zy/download-client-game-speed-limiter/releases)，下载：
 
 ```text
-qbee-game-speed-limiter-windows.zip
+download-client-game-speed-limiter-windows.zip
 ```
 
 解压后应看到这些用户文件：
 
 ```text
-qbee_limiter_config.exe
-qbee_limiter_monitor.exe
-qbee_game_speed_limiter.json
+download_limiter_config.exe
+download_limiter_monitor.exe
+download_client_game_speed_limiter.json
 install.cmd
 install.ps1
 uninstall.cmd
@@ -64,7 +64,9 @@ README.zh-CN.md
 LICENSE
 ```
 
-推荐先双击 `install.cmd`，它会自动创建桌面和开始菜单入口，并打开配置界面；也可以直接双击 `qbee_limiter_config.exe` 便携使用。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
+推荐先双击 `install.cmd`，它会自动创建桌面和开始菜单入口，并打开配置界面；也可以直接双击 `download_limiter_config.exe` 便携使用。`download_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
+
+旧版 `qbee_game_speed_limiter.json` 会在首次启动时自动读取；安装脚本也会把旧配置复制成新文件名，升级时不需要重新填写账号密码。
 
 ## 第一次使用
 
@@ -113,7 +115,7 @@ http://127.0.0.1:80
 如果你不想安装，也可以直接双击：
 
 ```text
-qbee_limiter_config.exe
+download_limiter_config.exe
 ```
 
 它会在浏览器里打开一个本地配置页面。
@@ -172,20 +174,6 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 
 如果游戏启动前你已经手动打开了 qB / Transmission 备用限速，工具会尊重你的手动设置，游戏退出后不会帮你关掉。对 aria2、µTorrent / BitTorrent、Deluge、BitComet 这类全局限速型客户端，工具会在进入游戏前记录原值，游戏退出后恢复。
 
-## 运行自检会检查什么？
-
-配置页面里的“运行自检”会检查：
-
-- 两个 exe 是否在同一目录。
-- 配置文件是否存在。
-- 当前下载客户端地址是否以 `http://` 或 `https://` 开头。
-- 游戏库目录是否为空，路径是否真实存在。
-- 后台监控是否正在运行，状态是否长时间未更新。
-- 是否启用了开机自启动。
-- 当前客户端是否需要额外准备远程接口，BitComet WebUI 地址和游戏限速值是否完整。
-
-如果你不确定哪里填错了，先点“运行自检”。
-
 ## 常见问题
 
 ### qB 下载为什么会影响游戏延迟？
@@ -240,7 +228,7 @@ BitComet / 比特彗星需要先在客户端里启用远程访问 / WebUI，然�
 
 ## 隐私提醒
 
-`qbee_game_speed_limiter.json` 会在本机保存下载器远程控制地址、用户名、密码或 aria2 secret。不要把自己的真实配置上传到 GitHub 或发给别人。
+`download_client_game_speed_limiter.json` 会在本机保存下载器远程控制地址、用户名、密码或 aria2 secret。不要把自己的真实配置上传到 GitHub 或发给别人。
 
 ## 后续计划
 

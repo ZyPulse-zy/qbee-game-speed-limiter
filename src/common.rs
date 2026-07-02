@@ -28,8 +28,18 @@ type Aes256CbcEnc = cbc::Encryptor<Aes256>;
 type HmacSha256 = Hmac<Sha256>;
 
 const RUN_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
-const RUN_VALUE: &str = "QbeeLimiterMonitor";
-const MONITOR_MUTEX: &str = "QbeeLimiterMonitor.SingleInstance";
+const RUN_VALUE: &str = "DownloadClientGameLimiterMonitor";
+const LEGACY_RUN_VALUE: &str = "QbeeLimiterMonitor";
+const MONITOR_MUTEX: &str = "DownloadClientGameLimiterMonitor.SingleInstance";
+const CONFIG_FILE: &str = "download_client_game_speed_limiter.json";
+const LEGACY_CONFIG_FILE: &str = "qbee_game_speed_limiter.json";
+const STATUS_FILE: &str = "download_limiter_status.json";
+const LEGACY_STATUS_FILE: &str = "qbee_limiter_status.json";
+const STOP_FILE: &str = "download_limiter_monitor.stop";
+const LEGACY_STOP_FILE: &str = "qbee_limiter_monitor.stop";
+const MONITOR_EXE: &str = "download_limiter_monitor.exe";
+const LEGACY_MONITOR_EXE: &str = "qbee_limiter_monitor.exe";
+const CONFIG_EXE: &str = "download_limiter_config.exe";
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -139,7 +149,7 @@ impl Default for AppConfig {
             restore_on_exit: true,
             start_with_windows: false,
             auto_start_monitor: true,
-            log_file: "qbee_game_speed_limiter.log".into(),
+            log_file: "download_client_game_speed_limiter.log".into(),
         }
     }
 }
@@ -191,23 +201,40 @@ pub fn app_dir() -> PathBuf {
 }
 
 pub fn config_path() -> PathBuf {
-    app_dir().join("qbee_game_speed_limiter.json")
+    app_dir().join(CONFIG_FILE)
+}
+
+pub fn legacy_config_path() -> PathBuf {
+    app_dir().join(LEGACY_CONFIG_FILE)
 }
 
 pub fn status_path() -> PathBuf {
-    app_dir().join("qbee_limiter_status.json")
+    app_dir().join(STATUS_FILE)
 }
 
 pub fn stop_path() -> PathBuf {
-    app_dir().join("qbee_limiter_monitor.stop")
+    app_dir().join(STOP_FILE)
+}
+
+pub fn legacy_stop_path() -> PathBuf {
+    app_dir().join(LEGACY_STOP_FILE)
 }
 
 pub fn monitor_exe_path() -> PathBuf {
-    app_dir().join("qbee_limiter_monitor.exe")
+    app_dir().join(MONITOR_EXE)
+}
+
+pub fn legacy_monitor_exe_path() -> PathBuf {
+    app_dir().join(LEGACY_MONITOR_EXE)
 }
 
 pub fn load_config() -> AppConfig {
-    match fs::read_to_string(config_path())
+    let path = if config_path().is_file() {
+        config_path()
+    } else {
+        legacy_config_path()
+    };
+    match fs::read_to_string(path)
         .ok()
         .and_then(|text| serde_json::from_str::<AppConfig>(&text).ok())
     {
@@ -261,7 +288,7 @@ pub fn save_status(status: &MonitorStatus) {
 
 pub fn log_line(config: &AppConfig, message: &str) {
     let path = app_dir().join(if config.log_file.is_empty() {
-        "qbee_game_speed_limiter.log"
+        "download_client_game_speed_limiter.log"
     } else {
         &config.log_file
     });
@@ -297,10 +324,16 @@ pub fn now_unix() -> u64 {
 
 pub fn request_stop_monitor() {
     let _ = fs::write(stop_path(), "stop");
+    let _ = fs::write(legacy_stop_path(), "stop");
 }
 
 pub fn clear_stop_monitor() {
     let _ = fs::remove_file(stop_path());
+    let _ = fs::remove_file(legacy_stop_path());
+}
+
+pub fn stop_monitor_requested() -> bool {
+    stop_path().is_file() || legacy_stop_path().is_file()
 }
 
 pub fn start_monitor_process() -> Result<(), String> {
@@ -325,7 +358,7 @@ pub fn start_monitor_process_checked() -> Result<MonitorStatus, String> {
             return Ok(status);
         }
     }
-    Err("后台监控启动后没有响应。可能已有旧版本监控程序正在运行，或 qbee_limiter_monitor.exe 启动后立即退出。请在任务管理器结束 qbee_limiter_monitor.exe 后重试，或把新版本解压覆盖到原目录。".into())
+    Err("后台监控启动后没有响应。可能已有旧版本监控程序正在运行，或 download_limiter_monitor.exe 启动后立即退出。请在任务管理器结束旧的 qbee_limiter_monitor.exe 后重试，或把新版本完整解压覆盖到原目录。".into())
 }
 
 pub fn create_desktop_shortcut() -> Result<PathBuf, String> {
@@ -341,12 +374,12 @@ pub fn create_desktop_shortcut() -> Result<PathBuf, String> {
         .find(|path| path.is_dir())
         .cloned()
         .ok_or_else(|| "没有找到桌面目录。".to_string())?;
-    let exe = app_dir().join("qbee_limiter_config.exe");
+    let exe = app_dir().join(CONFIG_EXE);
     if !exe.is_file() {
         return Err(format!("找不到配置程序：{}", exe.display()));
     }
     let exe_url = format!("file:///{}", exe.to_string_lossy().replace('\\', "/"));
-    let shortcut = desktop.join("qbee 游戏限速助手.url");
+    let shortcut = desktop.join("下载器游戏限速助手.url");
     let content = format!(
         "[InternetShortcut]\r\nURL={exe_url}\r\nIconFile={}\r\nIconIndex=0\r\n",
         exe.to_string_lossy()
@@ -373,6 +406,7 @@ pub fn set_startup_enabled(enabled: bool) {
             return;
         }
         let value = wide(RUN_VALUE);
+        let legacy_value = wide(LEGACY_RUN_VALUE);
         if enabled {
             let command = wide(&format!("\"{}\"", monitor_exe_path().to_string_lossy()));
             RegSetValueExW(
@@ -386,6 +420,7 @@ pub fn set_startup_enabled(enabled: bool) {
         } else {
             RegDeleteValueW(key, value.as_ptr());
         }
+        RegDeleteValueW(key, legacy_value.as_ptr());
         RegCloseKey(key);
     }
 }
@@ -738,7 +773,7 @@ impl QbeeClient {
             "POST" => self.agent.post(&url),
             _ => self.agent.get(&url),
         }
-        .set("User-Agent", "qbee-limiter/7.0")
+        .set("User-Agent", "download-client-game-limiter/7.0")
         .set("Referer", &self.base_url);
 
         if let Some(cookie) = &self.cookie {
@@ -814,7 +849,7 @@ impl TransmissionClient {
         let mut req = self
             .agent
             .post(&self.url)
-            .set("User-Agent", "qbee-limiter/7.0")
+            .set("User-Agent", "download-client-game-limiter/7.0")
             .set("Content-Type", "application/json");
         if let Some(session_id) = &self.session_id {
             req = req.set("X-Transmission-Session-Id", session_id);
@@ -913,7 +948,7 @@ impl Aria2Client {
         }
         let body = serde_json::json!({
             "jsonrpc": "2.0",
-            "id": "qbee-limiter",
+            "id": "download-client-game-limiter",
             "method": method,
             "params": params,
         })
@@ -921,7 +956,7 @@ impl Aria2Client {
         let response = self
             .agent
             .post(&self.url)
-            .set("User-Agent", "qbee-limiter/7.0")
+            .set("User-Agent", "download-client-game-limiter/7.0")
             .set("Content-Type", "application/json")
             .send_string(&body)
             .map_err(|err| err.to_string())?;
@@ -1029,7 +1064,7 @@ impl UTorrentClient {
 
     fn with_common_headers(&self, req: ureq::Request) -> ureq::Request {
         let mut req = req
-            .set("User-Agent", "qbee-limiter/7.0")
+            .set("User-Agent", "download-client-game-limiter/7.0")
             .set("Referer", &self.base_url);
         if !self.username.is_empty() || !self.password.is_empty() {
             req = req.set(
@@ -1176,7 +1211,7 @@ impl DelugeClient {
         let mut req = self
             .agent
             .post(&self.url)
-            .set("User-Agent", "qbee-limiter/7.0")
+            .set("User-Agent", "download-client-game-limiter/7.0")
             .set("Content-Type", "application/json");
         if let Some(cookie) = &self.cookie {
             req = req.set("Cookie", cookie);
@@ -1365,7 +1400,7 @@ impl BitCometClient {
             serde_json::json!({
                 "invite_token": invite_token,
                 "device_id": self.client_id.clone(),
-                "device_name": "qbee Game Speed Limiter",
+                "device_name": "Download Client Game Speed Limiter",
                 "platform": "webui",
             }),
             Some(&invite_token),
@@ -1392,7 +1427,7 @@ impl BitCometClient {
         let mut req = self
             .agent
             .post(&url)
-            .set("User-Agent", "qbee-limiter/7.0")
+            .set("User-Agent", "download-client-game-limiter/7.0")
             .set("Client-Type", "BitComet WebUI")
             .set("Content-Type", "application/json");
         if let Some(token) = bearer {
@@ -1438,7 +1473,7 @@ fn bitcomet_error_message(value: &serde_json::Value) -> Option<String> {
 
 fn bitcomet_client_id() -> String {
     let seed = format!(
-        "qbee-game-speed-limiter:{}:{}",
+        "download-client-game-speed-limiter:{}:{}",
         env::var("COMPUTERNAME").unwrap_or_default(),
         app_dir().display()
     );
@@ -1515,7 +1550,7 @@ pub fn run_diagnostics(config: &AppConfig) -> Vec<DiagnosticItem> {
             &mut items,
             "ok",
             "后台监控程序",
-            "已找到 qbee_limiter_monitor.exe。",
+            "已找到 download_limiter_monitor.exe。",
         )
     } else {
         push_diag(
@@ -1534,14 +1569,14 @@ pub fn run_diagnostics(config: &AppConfig) -> Vec<DiagnosticItem> {
             &mut items,
             "ok",
             "配置文件",
-            "已找到 qbee_game_speed_limiter.json。",
+            "已找到 download_client_game_speed_limiter.json。",
         )
     } else {
         push_diag(
             &mut items,
             "warn",
             "配置文件未创建",
-            "保存配置后会自动创建 qbee_game_speed_limiter.json。",
+            "保存配置后会自动创建 download_client_game_speed_limiter.json。",
         );
     }
 
@@ -2001,7 +2036,7 @@ pub fn run_monitor_forever() {
         updated_at: now_unix(),
     });
 
-    while !stop_path().is_file() {
+    while !stop_monitor_requested() {
         let latest_config = load_config();
         if serde_json::to_string(&latest_config).ok() != serde_json::to_string(&config).ok() {
             config = latest_config;
@@ -2059,7 +2094,7 @@ pub fn run_monitor_forever() {
         });
 
         for _ in 0..config.check_interval_seconds.max(1) * 10 {
-            if stop_path().is_file() {
+            if stop_monitor_requested() {
                 break;
             }
             thread::sleep(Duration::from_millis(100));

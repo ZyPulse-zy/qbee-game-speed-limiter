@@ -250,7 +250,7 @@ const APP_HTML: &str = r#"<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>qbee 游戏限速助手</title>
+<title>下载器游戏限速助手</title>
 <style>
 :root{color-scheme:dark;--bg:#08090a;--panel:#16171c;--panel2:#1e1f25;--line:rgba(255,255,255,.08);--text:#f7f8f8;--muted:#9ca3af;--dim:#6b7280;--accent:#5e6ad2;--ok:#32d583;--warn:#fdb022;--bad:#f97066}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 25% -10%,rgba(94,106,210,.18),transparent 34%),var(--bg);color:var(--text);font:14px/1.55 Inter,"Segoe UI",system-ui,sans-serif}
@@ -269,7 +269,7 @@ const APP_HTML: &str = r#"<!doctype html>
 <body>
 <main class="shell">
   <section class="top">
-    <div class="title"><h1>qbee 游戏限速助手</h1><p>配置界面只在需要时打开，后台监控程序独立低占用运行。</p></div>
+    <div class="title"><h1>下载器游戏限速助手</h1><p>配置界面只在需要时打开，后台监控程序独立低占用运行。</p></div>
     <div class="status"><b id="headline">正在读取状态</b><span id="subline">请稍候...</span></div>
   </section>
   <section class="grid">
@@ -325,7 +325,7 @@ const APP_HTML: &str = r#"<!doctype html>
       <div class="list" id="folders"></div>
     </div>
   </section>
-  <div class="footer">配置会保存在本目录的 qbee_game_speed_limiter.json。保存配置后，后台监控程序会按你的设置自动启动。</div>
+  <div class="footer">配置会保存在本目录的 download_client_game_speed_limiter.json。首次升级时会自动读取旧版 qbee_game_speed_limiter.json。</div>
 </main>
 <script>
 let config = null;
