@@ -1,4 +1,4 @@
-﻿# qBittorrent Game Speed Limiter
+# qbee Game Speed Limiter
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
@@ -17,6 +17,8 @@ Automatically throttle torrent/magnet download clients while you play games, the
 | qBittorrent / qBittorrent Enhanced Edition | Supported | Toggles alternative speed limits |
 | Transmission | Supported | Toggles `alt-speed-enabled` through RPC |
 | aria2 / Motrix | Supported | Temporarily changes global upload/download limits, then restores them |
+| µTorrent / BitTorrent Classic | Supported | Temporarily changes global upload/download limits, then restores them |
+| Deluge | Supported | Temporarily changes global upload/download limits, then restores them |
 | BitComet | Listed, not auto-controlled yet | BitComet lacks a stable public remote speed-limit API, so the app shows a clear warning instead of pretending it works |
 
 ## Why Use It?
@@ -28,11 +30,14 @@ This tool detects when a game is running, applies a downloader-specific game-spe
 ## Highlights
 
 - Supports Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame and common game folders.
-- Supports qB, Transmission, aria2 / Motrix, with honest BitComet status messaging.
+- Supports qB, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, and Deluge, with honest BitComet status messaging.
 - Starts the low-memory monitor with Windows.
 - Keeps the configuration UI separate from the background monitor.
 - Can create a desktop shortcut from the configuration UI.
+- Includes a self-check tool for missing files, invalid URLs, game folder problems, stale monitor status, and startup settings.
+- Includes portable install/uninstall scripts without requiring administrator permissions.
 - Does not overwrite qB / Transmission alternative speed limits that you enabled manually.
+- Restores previous global limits for aria2, µTorrent / BitTorrent, and Deluge after the game exits.
 
 ## Download
 
@@ -44,6 +49,8 @@ The zip contains only the end-user files:
 qbee_limiter_config.exe
 qbee_limiter_monitor.exe
 qbee_game_speed_limiter.json
+install.ps1
+uninstall.ps1
 README.zh-CN.md
 LICENSE
 ```
@@ -51,20 +58,20 @@ LICENSE
 ## Quick Start
 
 1. Enable your download client's remote control interface.
-2. Extract the zip.
+2. Extract the zip and run `install.ps1`, or run `qbee_limiter_config.exe` directly for portable use.
 3. Run `qbee_limiter_config.exe`.
-4. Choose qBittorrent, Transmission, aria2 / Motrix, or BitComet in the client selector.
-5. Enter the URL, username/password, or aria2 secret as needed.
+4. Choose qBittorrent, Transmission, aria2 / Motrix, µTorrent / BitTorrent Classic, Deluge, or BitComet in the client selector.
+5. Enter the URL, username/password, or aria2 secret as needed. Deluge usually only needs the Web password.
 6. Click `测试连接`.
 7. Click `自动扫描` to find game library folders, or add folders manually.
 8. Enable `保存后自动启动监控` and click `保存并应用`.
-9. Click `创建桌面入口` if you want a desktop shortcut.
+9. Click `运行自检` if anything looks wrong, then click `创建桌面入口` if you want a desktop shortcut.
 
 ## Notes
 
 - qB uses its built-in alternative speed limit switch.
 - Transmission uses its RPC `alt-speed-enabled` switch.
-- aria2 / Motrix uses temporary global speed limits and restores the old values afterward.
+- aria2 / Motrix, µTorrent / BitTorrent Classic, and Deluge use temporary global speed limits and restore the old values afterward.
 - BitComet is visible in the UI, but automatic speed switching is not enabled until a reliable control path exists.
 
 ## Build

@@ -1,4 +1,4 @@
-﻿# qBittorrent 游戏限速助手
+# qbee 游戏限速助手
 
 [English](README.md) | 简体中文
 
@@ -23,20 +23,24 @@
 | qBittorrent / qBittorrent Enhanced Edition | 已支持 | 自动切换备用速度限制 |
 | Transmission | 已支持 | 自动切换 `alt-speed-enabled` 备用限速 |
 | aria2 / Motrix | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
-| BitComet / 比特彗星 | 已加入列表，暂不自动控制 | 当前缺少稳定公开的远程限速 API，本版会明确提示，不会假装成功 |
+| µTorrent / BitTorrent Classic | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
+| Deluge | 已支持 | 临时修改全局上下行限速，退出游戏后恢复 |
+| BitComet / 比特彗星 | 已加入主流客户端列表，暂不自动控制 | 当前缺少稳定公开的远程限速 API，本版会明确提示，不会假装成功 |
 
-如果你主要用 BitComet，当前版本可以先作为游戏检测和状态工具使用；自动控制需要后续走 Windows 级限速方案，或等待 BitComet 提供稳定远程接口。
+如果你主要用 BitComet，当前版本可以先作为游戏检测和状态工具使用；自动限速需要后续走 Windows 级进程限速方案，或等待 BitComet 提供稳定远程接口。
 
 ## 主要特点
 
 - 支持 Steam / Epic / Xbox / Battle.net / EA / Ubisoft / WeGame 等常见游戏目录。
-- 支持 qB、Transmission、aria2 / Motrix，并对 BitComet 给出明确状态说明。
+- 支持 qB、Transmission、aria2 / Motrix、µTorrent / BitTorrent Classic、Deluge，并对 BitComet 给出明确状态说明。
 - 支持 Windows 开机自启动。
 - 后台监控独立运行，低占用。
 - 配置界面用完可关，不影响后台监控。
 - 不会覆盖你原本手动开启的 qB / Transmission 备用限速状态。
-- aria2 会记录原来的全局限速，游戏退出后恢复。
+- 对 aria2、µTorrent / BitTorrent、Deluge 会记录原来的全局限速，游戏退出后恢复。
 - 可一键创建桌面入口，减少下次查找程序的麻烦。
+- 内置“运行自检”，能提示文件缺失、地址错误、游戏库路径无效、后台状态异常等常见问题。
+- 附带便携安装/卸载脚本，不需要管理员权限。
 
 ## 下载哪个文件
 
@@ -52,11 +56,13 @@ qbee-game-speed-limiter-windows.zip
 qbee_limiter_config.exe
 qbee_limiter_monitor.exe
 qbee_game_speed_limiter.json
+install.ps1
+uninstall.ps1
 README.zh-CN.md
 LICENSE
 ```
 
-平时主要打开 `qbee_limiter_config.exe`。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
+推荐先右键运行 `install.ps1`（或在 PowerShell 中运行），它会创建桌面和开始菜单入口；也可以直接双击 `qbee_limiter_config.exe` 使用。`qbee_limiter_monitor.exe` 是后台监控程序，不需要你手动配置它。
 
 ## 第一次使用
 
@@ -80,11 +86,25 @@ aria2 / Motrix：启用 JSON-RPC，常见地址是：
 http://127.0.0.1:6800/jsonrpc
 ```
 
+µTorrent / BitTorrent Classic：启用 Web UI，地址通常类似：
+
+```text
+http://127.0.0.1:8080/gui
+```
+
+Deluge：启用 Deluge Web，JSON 地址通常是：
+
+```text
+http://127.0.0.1:8112/json
+```
+
 BitComet / 比特彗星：当前没有稳定公开的远程限速 API，本工具会提示当前限制，暂不自动限速。
 
-### 2. 打开配置界面
+### 2. 安装或打开配置界面
 
-双击：
+推荐方式：右键 `install.ps1`，选择“使用 PowerShell 运行”。它会创建桌面入口和开始菜单入口。
+
+如果你不想安装，也可以直接双击：
 
 ```text
 qbee_limiter_config.exe
@@ -99,6 +119,8 @@ qbee_limiter_config.exe
 - qB：填写 qB Web UI 地址、用户名、密码。
 - Transmission：填写 Transmission RPC 地址、用户名、密码。
 - aria2 / Motrix：填写 JSON-RPC 地址；如果设置了 RPC Secret，也要填入。
+- µTorrent / BitTorrent Classic：填写 Web UI 地址、用户名、密码。
+- Deluge：填写 Deluge Web JSON 地址；通常只需要填写密码。
 - BitComet：本版会明确提示暂不支持自动限速。
 
 如果 qB 设置了 localhost 免验证，可以先把用户名和密码留空，然后点“测试连接”。
@@ -128,7 +150,8 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 2. 看到连接成功后，点击“自动扫描”。
 3. 勾选“保存后自动启动监控”。
 4. 点击“保存并应用”。
-5. 点击“创建桌面入口”，以后从桌面打开配置器。
+5. 点击“运行自检”，确认文件、地址、游戏库和后台状态没有明显问题。
+6. 点击“创建桌面入口”，以后从桌面打开配置器。
 
 保存成功后，后台监控程序会自动启动。之后你可以关闭浏览器里的配置页面。
 
@@ -139,7 +162,21 @@ Steam 用户建议添加到 `steamapps` 这一层，不要只添加某一个游�
 - 检测到游戏运行后，工具会自动进入游戏限速模式。
 - 游戏退出后，工具会自动恢复它改动过的下载器状态。
 
-如果游戏启动前你已经手动打开了 qB / Transmission 备用限速，工具会尊重你的手动设置，游戏退出后不会帮你关掉。
+如果游戏启动前你已经手动打开了 qB / Transmission 备用限速，工具会尊重你的手动设置，游戏退出后不会帮你关掉。对 aria2、µTorrent / BitTorrent、Deluge 这类全局限速型客户端，工具会在进入游戏前记录原值，游戏退出后恢复。
+
+## 运行自检会检查什么？
+
+配置页面里的“运行自检”会检查：
+
+- 两个 exe 是否在同一目录。
+- 配置文件是否存在。
+- 当前下载客户端地址是否以 `http://` 或 `https://` 开头。
+- 游戏库目录是否为空，路径是否真实存在。
+- 后台监控是否正在运行，状态是否长时间未更新。
+- 是否启用了开机自启动。
+- 当前客户端是否需要额外准备远程接口，BitComet 是否只能提示、不能自动控制。
+
+如果你不确定哪里填错了，先点“运行自检”。
 
 ## 常见问题
 
@@ -171,13 +208,13 @@ http://[::1]:8080
 http://127.0.0.1:8081
 ```
 
-### aria2 游戏限速填多少？
+### 游戏中限速填多少？
 
-建议从下载 `512 KiB/s`、上传 `128 KiB/s` 开始。网速较高可以适当调大；如果联机游戏仍然延迟高，就继续降低上传限速。
+对 aria2、µTorrent / BitTorrent、Deluge，建议从下载 `512 KiB/s`、上传 `128 KiB/s` 开始。网速较高可以适当调大；如果联机游戏仍然延迟高，就继续降低上传限速。
 
 ### BitComet 为什么不能自动限速？
 
-BitComet / 比特彗星目前没有像 qB、Transmission、aria2 那样稳定公开的远程限速 API。为了避免误导用户，本版会明确提示“暂不自动控制”，不会显示假成功。后续可以考虑 Windows 级限速方案来覆盖 BitComet。
+BitComet / 比特彗星目前没有像 qB、Transmission、aria2、µTorrent、Deluge 那样稳定公开、适合自动化的远程限速 API。为了避免误导用户，本版会明确提示“暂不自动控制”，不会显示假成功。后续可以考虑 Windows 级进程限速方案来覆盖 BitComet。
 
 ### 自动扫描没有找到所有游戏
 
@@ -197,7 +234,17 @@ BitComet / 比特彗星目前没有像 qB、Transmission、aria2 那样稳定公
 
 ## 后续计划
 
-后续更适合截图展示、也更能提升长期使用体验的功能包括：系统托盘图标、Windows 通知、最近触发记录、每个游戏单独限速值、Windows 级进程限速以覆盖 BitComet 等没有公开 API 的客户端。
+后续更适合截图展示、也更能提升长期使用体验的功能包括：系统托盘图标、Windows 通知、最近触发记录、每个游戏单独限速值、Windows 级进程限速以覆盖 BitComet、迅雷等没有稳定公开 API 的客户端。
+
+## 卸载
+
+运行：
+
+```powershell
+.\uninstall.ps1
+```
+
+它会停止后台监控，删除桌面/开始菜单入口，并移除开机启动项。配置文件默认保留，你可以手动删除整个解压目录来彻底清理。
 
 ## 开发者
 

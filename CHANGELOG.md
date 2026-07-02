@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.3.1
+
+- Added automatic global speed-limit control for µTorrent / BitTorrent Classic through the Web UI API.
+- Added automatic global speed-limit control for Deluge through the Web JSON-RPC API.
+- Added a configuration self-check tool that explains missing monitor files, invalid URLs, missing game folders, stale monitor status, and startup settings.
+- Added portable install and uninstall scripts for desktop and Start Menu shortcuts without requiring administrator permissions.
+- Included the install scripts in the Windows release package and documented the simpler setup flow.
+- Updated the configuration UI and user guides to present qBittorrent/qBEE, Transmission, aria2/Motrix, µTorrent/BitTorrent Classic, Deluge, and BitComet status clearly.
 ## v0.3.0
 
 - Added a multi-downloader configuration model for qBittorrent/qBEE, Transmission, aria2/Motrix, and BitComet visibility.

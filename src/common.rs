@@ -27,6 +27,8 @@ pub struct AppConfig {
     pub qbee_url: String,
     pub transmission_url: String,
     pub aria2_url: String,
+    pub utorrent_url: String,
+    pub deluge_url: String,
     pub username: String,
     pub password: String,
     pub aria2_secret: String,
@@ -50,6 +52,8 @@ pub enum DownloadClientKind {
     QBittorrent,
     Transmission,
     Aria2,
+    UTorrent,
+    Deluge,
     BitComet,
 }
 
@@ -66,6 +70,8 @@ impl Default for AppConfig {
             qbee_url: "http://127.0.0.1:8080".into(),
             transmission_url: "http://127.0.0.1:9091/transmission/rpc".into(),
             aria2_url: "http://127.0.0.1:6800/jsonrpc".into(),
+            utorrent_url: "http://127.0.0.1:8080/gui".into(),
+            deluge_url: "http://127.0.0.1:8112/json".into(),
             username: "admin".into(),
             password: String::new(),
             aria2_secret: String::new(),
@@ -125,6 +131,12 @@ impl Default for AppConfig {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct DiagnosticItem {
+    pub level: String,
+    pub title: String,
+    pub message: String,
+}
 #[derive(Clone, Serialize, Deserialize)]
 pub struct MonitorStatus {
     pub running: bool,
@@ -187,8 +199,21 @@ pub fn load_config() -> AppConfig {
         .and_then(|text| serde_json::from_str::<AppConfig>(&text).ok())
     {
         Some(mut config) => {
+            let defaults = AppConfig::default();
             if config.qbee_url.trim().is_empty() {
-                config.qbee_url = AppConfig::default().qbee_url;
+                config.qbee_url = defaults.qbee_url.clone();
+            }
+            if config.transmission_url.trim().is_empty() {
+                config.transmission_url = defaults.transmission_url.clone();
+            }
+            if config.aria2_url.trim().is_empty() {
+                config.aria2_url = defaults.aria2_url.clone();
+            }
+            if config.utorrent_url.trim().is_empty() {
+                config.utorrent_url = defaults.utorrent_url.clone();
+            }
+            if config.deluge_url.trim().is_empty() {
+                config.deluge_url = defaults.deluge_url.clone();
             }
             if config.check_interval_seconds == 0 {
                 config.check_interval_seconds = 5;
@@ -305,7 +330,7 @@ pub fn create_desktop_shortcut() -> Result<PathBuf, String> {
         return Err(format!("找不到配置程序：{}", exe.display()));
     }
     let exe_url = format!("file:///{}", exe.to_string_lossy().replace('\\', "/"));
-    let shortcut = desktop.join("qBittorrent 游戏限速助手.url");
+    let shortcut = desktop.join("qbee 游戏限速助手.url");
     let content = format!(
         "[InternetShortcut]\r\nURL={exe_url}\r\nIconFile={}\r\nIconIndex=0\r\n",
         exe.to_string_lossy()
@@ -360,12 +385,22 @@ pub enum DownloadLimitSnapshot {
         previous_download: String,
         previous_upload: String,
     },
+    UTorrent {
+        previous_download: i64,
+        previous_upload: i64,
+    },
+    Deluge {
+        previous_download: f64,
+        previous_upload: f64,
+    },
 }
 
 pub enum DownloadController {
     QBittorrent(QbeeClient),
     Transmission(TransmissionClient),
     Aria2(Aria2Client),
+    UTorrent(UTorrentClient),
+    Deluge(DelugeClient),
     BitComet(BitCometClient),
 }
 
@@ -375,6 +410,8 @@ impl DownloadController {
             DownloadClientKind::QBittorrent => Self::QBittorrent(QbeeClient::new(config)),
             DownloadClientKind::Transmission => Self::Transmission(TransmissionClient::new(config)),
             DownloadClientKind::Aria2 => Self::Aria2(Aria2Client::new(config)),
+            DownloadClientKind::UTorrent => Self::UTorrent(UTorrentClient::new(config)),
+            DownloadClientKind::Deluge => Self::Deluge(DelugeClient::new(config)),
             DownloadClientKind::BitComet => Self::BitComet(BitCometClient::new()),
         }
     }
@@ -394,6 +431,26 @@ impl DownloadController {
                 Ok(format!(
                     "aria2 连接成功，当前全局限速：下载 {down}，上传 {up}。游戏中将切换为 {}K / {}K。",
                     config.game_download_limit_kib, config.game_upload_limit_kib
+                ))
+            }
+            Self::UTorrent(client) => {
+                let (down, up) = client.current_limits()?;
+                Ok(format!(
+                    "µTorrent/BitTorrent 连接成功，当前全局限速：下载 {}，上传 {}。游戏中将切换为 {}K / {}K。",
+                    format_int_limit(down),
+                    format_int_limit(up),
+                    config.game_download_limit_kib,
+                    config.game_upload_limit_kib
+                ))
+            }
+            Self::Deluge(client) => {
+                let (down, up) = client.current_limits()?;
+                Ok(format!(
+                    "Deluge 连接成功，当前全局限速：下载 {}，上传 {}。游戏中将切换为 {}K / {}K。",
+                    format_float_limit(down),
+                    format_float_limit(up),
+                    config.game_download_limit_kib,
+                    config.game_upload_limit_kib
                 ))
             }
             Self::BitComet(client) => client.test_connection(),
@@ -449,6 +506,34 @@ impl DownloadController {
                     ),
                 ))
             }
+            Self::UTorrent(client) => {
+                let (previous_download, previous_upload) = client.current_limits()?;
+                client.set_limits(config.game_download_limit_kib, config.game_upload_limit_kib)?;
+                Ok((
+                    DownloadLimitSnapshot::UTorrent {
+                        previous_download,
+                        previous_upload,
+                    },
+                    format!(
+                        "检测到游戏运行，已把 µTorrent/BitTorrent 全局限速切换为下载 {}K / 上传 {}K。",
+                        config.game_download_limit_kib, config.game_upload_limit_kib
+                    ),
+                ))
+            }
+            Self::Deluge(client) => {
+                let (previous_download, previous_upload) = client.current_limits()?;
+                client.set_limits(config.game_download_limit_kib, config.game_upload_limit_kib)?;
+                Ok((
+                    DownloadLimitSnapshot::Deluge {
+                        previous_download,
+                        previous_upload,
+                    },
+                    format!(
+                        "检测到游戏运行，已把 Deluge 全局限速切换为下载 {}K / 上传 {}K。",
+                        config.game_download_limit_kib, config.game_upload_limit_kib
+                    ),
+                ))
+            }
             Self::BitComet(client) => client.enable_game_mode(),
         }
     }
@@ -480,6 +565,26 @@ impl DownloadController {
             ) => {
                 client.restore_limits(&previous_download, &previous_upload)?;
                 Ok("检测到游戏退出，已恢复 aria2 原来的全局限速。".into())
+            }
+            (
+                Self::UTorrent(client),
+                DownloadLimitSnapshot::UTorrent {
+                    previous_download,
+                    previous_upload,
+                },
+            ) => {
+                client.restore_limits(previous_download, previous_upload)?;
+                Ok("检测到游戏退出，已恢复 µTorrent/BitTorrent 原来的全局限速。".into())
+            }
+            (
+                Self::Deluge(client),
+                DownloadLimitSnapshot::Deluge {
+                    previous_download,
+                    previous_upload,
+                },
+            ) => {
+                client.restore_limits(previous_download, previous_upload)?;
+                Ok("检测到游戏退出，已恢复 Deluge 原来的全局限速。".into())
             }
             _ => Ok("检测到游戏退出，当前下载器无需恢复。".into()),
         }
@@ -781,6 +886,299 @@ impl Aria2Client {
     }
 }
 
+pub struct UTorrentClient {
+    base_url: String,
+    username: String,
+    password: String,
+    agent: ureq::Agent,
+    token: Option<String>,
+    cookie: Option<String>,
+}
+
+impl UTorrentClient {
+    pub fn new(config: &AppConfig) -> Self {
+        Self {
+            base_url: normalize_utorrent_url(&config.utorrent_url),
+            username: config.username.clone(),
+            password: config.password.clone(),
+            agent: ureq::AgentBuilder::new()
+                .timeout_connect(Duration::from_secs(5))
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build(),
+            token: None,
+            cookie: None,
+        }
+    }
+
+    pub fn current_limits(&mut self) -> Result<(i64, i64), String> {
+        let value = self.api("action=getsettings")?;
+        let settings = value["settings"]
+            .as_array()
+            .ok_or_else(|| "µTorrent/BitTorrent 返回中没有 settings 字段。".to_string())?;
+        let download = utorrent_setting_i64(settings, "max_dl_rate").unwrap_or(0);
+        let upload = utorrent_setting_i64(settings, "max_ul_rate").unwrap_or(0);
+        Ok((download, upload))
+    }
+
+    pub fn set_limits(&mut self, download_kib: u64, upload_kib: u64) -> Result<(), String> {
+        self.set_setting("max_dl_rate", &download_kib.to_string())?;
+        self.set_setting("max_ul_rate", &upload_kib.to_string())?;
+        Ok(())
+    }
+
+    pub fn restore_limits(&mut self, download_kib: i64, upload_kib: i64) -> Result<(), String> {
+        self.set_setting("max_dl_rate", &download_kib.to_string())?;
+        self.set_setting("max_ul_rate", &upload_kib.to_string())?;
+        Ok(())
+    }
+
+    fn set_setting(&mut self, name: &str, value: &str) -> Result<(), String> {
+        self.api(&format!(
+            "action=setsetting&s={}&v={}",
+            url_encode(name),
+            url_encode(value)
+        ))?;
+        Ok(())
+    }
+
+    fn api(&mut self, query: &str) -> Result<serde_json::Value, String> {
+        self.ensure_token()?;
+        let token = self.token.clone().unwrap_or_default();
+        let url = format!("{}/?token={}&{}", self.base_url, url_encode(&token), query);
+        let response = self
+            .with_common_headers(self.agent.get(&url))
+            .call()
+            .map_err(|err| format!("µTorrent/BitTorrent Web API 失败：{err}"))?;
+        self.capture_cookie(&response);
+        let text = response.into_string().map_err(|err| err.to_string())?;
+        serde_json::from_str(&text)
+            .map_err(|err| format!("µTorrent/BitTorrent 返回不是有效 JSON：{err}"))
+    }
+
+    fn ensure_token(&mut self) -> Result<(), String> {
+        if self.token.is_some() {
+            return Ok(());
+        }
+        let url = format!("{}/token.html", self.base_url);
+        let response = self
+            .with_common_headers(self.agent.get(&url))
+            .call()
+            .map_err(|err| format!("无法获取 µTorrent/BitTorrent Token：{err}"))?;
+        self.capture_cookie(&response);
+        let text = response.into_string().map_err(|err| err.to_string())?;
+        let token = extract_utorrent_token(&text).ok_or_else(|| {
+            "没有在 token.html 中找到 µTorrent/BitTorrent Token，请检查 Web UI 地址和账号密码。"
+                .to_string()
+        })?;
+        self.token = Some(token);
+        Ok(())
+    }
+
+    fn with_common_headers(&self, req: ureq::Request) -> ureq::Request {
+        let mut req = req
+            .set("User-Agent", "qbee-limiter/7.0")
+            .set("Referer", &self.base_url);
+        if !self.username.is_empty() || !self.password.is_empty() {
+            req = req.set(
+                "Authorization",
+                &format!("Basic {}", base64_basic(&self.username, &self.password)),
+            );
+        }
+        if let Some(cookie) = &self.cookie {
+            req = req.set("Cookie", cookie);
+        }
+        req
+    }
+
+    fn capture_cookie(&mut self, response: &ureq::Response) {
+        if let Some(cookie) = response.header("set-cookie") {
+            self.cookie = cookie.split(';').next().map(str::to_string);
+        }
+    }
+}
+
+fn normalize_utorrent_url(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/');
+    if trimmed.ends_with("/gui") {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/gui")
+    }
+}
+
+fn extract_utorrent_token(text: &str) -> Option<String> {
+    for marker in ["id='token'", "id=\"token\""] {
+        if let Some(marker_index) = text.find(marker) {
+            let after_marker = &text[marker_index..];
+            let start = after_marker.find('>')? + 1;
+            let after_start = &after_marker[start..];
+            let end = after_start.find('<')?;
+            let token = after_start[..end].trim();
+            if !token.is_empty() {
+                return Some(token.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn utorrent_setting_i64(settings: &[serde_json::Value], name: &str) -> Option<i64> {
+    settings.iter().find_map(|row| {
+        let row = row.as_array()?;
+        if row.first()?.as_str()? != name {
+            return None;
+        }
+        let value = row.get(2)?;
+        value
+            .as_i64()
+            .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+    })
+}
+
+pub struct DelugeClient {
+    url: String,
+    password: String,
+    agent: ureq::Agent,
+    cookie: Option<String>,
+    logged_in: bool,
+}
+
+impl DelugeClient {
+    pub fn new(config: &AppConfig) -> Self {
+        Self {
+            url: normalize_deluge_url(&config.deluge_url),
+            password: config.password.clone(),
+            agent: ureq::AgentBuilder::new()
+                .timeout_connect(Duration::from_secs(5))
+                .timeout_read(Duration::from_secs(5))
+                .timeout_write(Duration::from_secs(5))
+                .build(),
+            cookie: None,
+            logged_in: false,
+        }
+    }
+
+    pub fn current_limits(&mut self) -> Result<(f64, f64), String> {
+        let value = self.rpc("core.get_config", serde_json::json!([]))?;
+        let download = json_number(&value["max_download_speed"]).unwrap_or(-1.0);
+        let upload = json_number(&value["max_upload_speed"]).unwrap_or(-1.0);
+        Ok((download, upload))
+    }
+
+    pub fn set_limits(&mut self, download_kib: u64, upload_kib: u64) -> Result<(), String> {
+        self.rpc(
+            "core.set_config",
+            serde_json::json!([{
+                "max_download_speed": download_kib as f64,
+                "max_upload_speed": upload_kib as f64,
+            }]),
+        )?;
+        Ok(())
+    }
+
+    pub fn restore_limits(&mut self, download_kib: f64, upload_kib: f64) -> Result<(), String> {
+        self.rpc(
+            "core.set_config",
+            serde_json::json!([{
+                "max_download_speed": download_kib,
+                "max_upload_speed": upload_kib,
+            }]),
+        )?;
+        Ok(())
+    }
+
+    fn ensure_login(&mut self) -> Result<(), String> {
+        if self.logged_in {
+            return Ok(());
+        }
+        let value = self.rpc_raw("auth.login", serde_json::json!([self.password.clone()]))?;
+        if value.as_bool() == Some(true) {
+            self.logged_in = true;
+            Ok(())
+        } else {
+            Err("Deluge Web 登录失败，请检查 Web UI 密码。".into())
+        }
+    }
+
+    fn rpc(
+        &mut self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        self.ensure_login()?;
+        self.rpc_raw(method, params)
+    }
+
+    fn rpc_raw(
+        &mut self,
+        method: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        let body = serde_json::json!({
+            "method": method,
+            "params": params,
+            "id": 1,
+        })
+        .to_string();
+        let mut req = self
+            .agent
+            .post(&self.url)
+            .set("User-Agent", "qbee-limiter/7.0")
+            .set("Content-Type", "application/json");
+        if let Some(cookie) = &self.cookie {
+            req = req.set("Cookie", cookie);
+        }
+        let response = req
+            .send_string(&body)
+            .map_err(|err| format!("Deluge Web API 失败：{err}"))?;
+        if let Some(cookie) = response.header("set-cookie") {
+            self.cookie = cookie.split(';').next().map(str::to_string);
+        }
+        let text = response.into_string().map_err(|err| err.to_string())?;
+        let value: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|err| format!("Deluge 返回不是有效 JSON：{err}"))?;
+        if !value["error"].is_null() {
+            return Err(format!(
+                "Deluge RPC 失败：{}",
+                value["error"]["message"].as_str().unwrap_or("unknown")
+            ));
+        }
+        Ok(value["result"].clone())
+    }
+}
+
+fn normalize_deluge_url(url: &str) -> String {
+    let trimmed = url.trim().trim_end_matches('/');
+    if trimmed.ends_with("/json") {
+        trimmed.to_string()
+    } else {
+        format!("{trimmed}/json")
+    }
+}
+
+fn json_number(value: &serde_json::Value) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_i64().map(|number| number as f64))
+        .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+}
+
+fn format_int_limit(value: i64) -> String {
+    if value <= 0 {
+        "不限速".to_string()
+    } else {
+        format!("{value}K")
+    }
+}
+
+fn format_float_limit(value: f64) -> String {
+    if value < 0.0 {
+        "不限速".to_string()
+    } else {
+        format!("{value:.0}K")
+    }
+}
 pub struct BitCometClient;
 
 impl BitCometClient {
@@ -805,6 +1203,198 @@ pub fn test_connection(config: &AppConfig) -> Result<String, String> {
     let mut controller = DownloadController::new(config);
     controller.test_connection(config)
 }
+pub fn run_diagnostics(config: &AppConfig) -> Vec<DiagnosticItem> {
+    let mut items = Vec::new();
+    push_diag(
+        &mut items,
+        "ok",
+        "程序目录",
+        &format!("当前程序目录：{}", app_dir().display()),
+    );
+
+    if monitor_exe_path().is_file() {
+        push_diag(
+            &mut items,
+            "ok",
+            "后台监控程序",
+            "已找到 qbee_limiter_monitor.exe。",
+        )
+    } else {
+        push_diag(
+            &mut items,
+            "error",
+            "后台监控程序缺失",
+            &format!(
+                "没有找到：{}。请把两个 exe 放在同一文件夹。",
+                monitor_exe_path().display()
+            ),
+        );
+    }
+
+    if config_path().is_file() {
+        push_diag(
+            &mut items,
+            "ok",
+            "配置文件",
+            "已找到 qbee_game_speed_limiter.json。",
+        )
+    } else {
+        push_diag(
+            &mut items,
+            "warn",
+            "配置文件未创建",
+            "保存配置后会自动创建 qbee_game_speed_limiter.json。",
+        );
+    }
+
+    match config.download_client {
+        DownloadClientKind::QBittorrent => {
+            check_url(&mut items, "qB Web UI 地址", &config.qbee_url)
+        }
+        DownloadClientKind::Transmission => check_url(
+            &mut items,
+            "Transmission RPC 地址",
+            &config.transmission_url,
+        ),
+        DownloadClientKind::Aria2 => {
+            check_url(&mut items, "aria2 JSON-RPC 地址", &config.aria2_url);
+            push_game_limit_diag(&mut items, config);
+        }
+        DownloadClientKind::UTorrent => {
+            check_url(
+                &mut items,
+                "µTorrent/BitTorrent Web UI 地址",
+                &config.utorrent_url,
+            );
+            push_game_limit_diag(&mut items, config);
+        }
+        DownloadClientKind::Deluge => {
+            check_url(&mut items, "Deluge Web JSON 地址", &config.deluge_url);
+            push_game_limit_diag(&mut items, config);
+        }
+        DownloadClientKind::BitComet => push_diag(
+            &mut items,
+            "warn",
+            "BitComet 自动控制",
+            "BitComet 已加入列表，但当前没有稳定公开的远程限速 API，本版不会假装自动限速。",
+        ),
+    }
+
+    let folders: Vec<_> = config
+        .game_folders
+        .iter()
+        .filter(|folder| !folder.trim().is_empty())
+        .collect();
+    let existing = folders
+        .iter()
+        .filter(|folder| Path::new(folder.as_str()).is_dir())
+        .count();
+    if folders.is_empty() {
+        push_diag(
+            &mut items,
+            "warn",
+            "游戏库目录",
+            "还没有添加游戏库目录。请先自动扫描或手动添加。",
+        );
+    } else if existing == 0 {
+        push_diag(
+            &mut items,
+            "warn",
+            "游戏库目录",
+            "已添加目录，但当前没有一个路径存在。请检查盘符和目录层级。Steam 建议添加 steamapps。",
+        );
+    } else {
+        push_diag(
+            &mut items,
+            "ok",
+            "游戏库目录",
+            &format!(
+                "已添加 {} 个目录，其中 {} 个存在。",
+                folders.len(),
+                existing
+            ),
+        );
+    }
+
+    let status = load_status();
+    if status.running {
+        let age = now_unix().saturating_sub(status.updated_at);
+        if age > config.check_interval_seconds.max(1) * 4 + 10 {
+            push_diag(
+                &mut items,
+                "warn",
+                "后台监控状态",
+                "状态文件较久没有更新，后台监控可能卡住或已经退出。",
+            );
+        } else {
+            push_diag(&mut items, "ok", "后台监控状态", "后台监控正在运行。")
+        }
+    } else {
+        push_diag(
+            &mut items,
+            "warn",
+            "后台监控状态",
+            "后台监控未运行。点击“启动监控”或勾选保存后自动启动。",
+        );
+    }
+
+    if config.start_with_windows {
+        push_diag(
+            &mut items,
+            "ok",
+            "开机自启动",
+            "配置已勾选开机启动；保存后会写入当前用户启动项。",
+        );
+    } else {
+        push_diag(
+            &mut items,
+            "info",
+            "开机自启动",
+            "未启用。需要长期使用时建议打开。",
+        );
+    }
+
+    items
+}
+
+fn push_diag(items: &mut Vec<DiagnosticItem>, level: &str, title: &str, message: &str) {
+    items.push(DiagnosticItem {
+        level: level.to_string(),
+        title: title.to_string(),
+        message: message.to_string(),
+    });
+}
+
+fn check_url(items: &mut Vec<DiagnosticItem>, title: &str, value: &str) {
+    let trimmed = value.trim();
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        push_diag(items, "ok", title, trimmed);
+    } else {
+        push_diag(items, "error", title, "地址应以 http:// 或 https:// 开头。");
+    }
+}
+
+fn push_game_limit_diag(items: &mut Vec<DiagnosticItem>, config: &AppConfig) {
+    if config.game_download_limit_kib == 0 || config.game_upload_limit_kib == 0 {
+        push_diag(
+            items,
+            "warn",
+            "游戏中限速值",
+            "下载/上传限速建议大于 0 KiB/s。",
+        );
+    } else {
+        push_diag(
+            items,
+            "ok",
+            "游戏中限速值",
+            &format!(
+                "游戏中会切换为下载 {} KiB/s、上传 {} KiB/s。",
+                config.game_download_limit_kib, config.game_upload_limit_kib
+            ),
+        );
+    }
+}
+
 fn base64_basic(username: &str, password: &str) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let input = format!("{username}:{password}");

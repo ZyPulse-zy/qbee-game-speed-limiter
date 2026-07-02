@@ -1,4 +1,4 @@
-﻿{
+{
     "qbee_url":  "http://127.0.0.1:8080",
     "username":  "admin",
     "password":  "",
@@ -57,6 +57,8 @@
     "download_client":  "qbittorrent",
     "transmission_url":  "http://127.0.0.1:9091/transmission/rpc",
     "aria2_url":  "http://127.0.0.1:6800/jsonrpc",
+    "utorrent_url":  "http://127.0.0.1:8080/gui",
+    "deluge_url":  "http://127.0.0.1:8112/json",
     "aria2_secret":  "",
     "game_download_limit_kib":  512,
     "game_upload_limit_kib":  128

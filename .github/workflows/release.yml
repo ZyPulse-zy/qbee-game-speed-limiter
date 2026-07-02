@@ -40,6 +40,8 @@ jobs:
           Copy-Item qbee_limiter_monitor.exe dist\
           Copy-Item qbee_game_speed_limiter.example.json dist\qbee_game_speed_limiter.json
           Copy-Item README.zh-CN.md dist\
+          Copy-Item install.ps1 dist\
+          Copy-Item uninstall.ps1 dist\
           Copy-Item LICENSE dist\
           Compress-Archive -Path dist\* -DestinationPath qbee-game-speed-limiter-windows.zip -Force
 

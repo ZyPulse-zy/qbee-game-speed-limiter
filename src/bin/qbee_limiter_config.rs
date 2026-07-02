@@ -131,6 +131,14 @@ fn handle_client(mut stream: TcpStream, shutdown: Arc<AtomicBool>) {
             },
             Err(err) => error_response(&format!("配置格式无效：{err}")),
         },
+        ("POST", "/api/diagnostics") => match serde_json::from_slice::<AppConfig>(&body) {
+            Ok(config) => json_response(&ApiResponse {
+                ok: true,
+                message: "自检完成。".into(),
+                data: run_diagnostics(&config),
+            }),
+            Err(err) => error_response(&format!("配置格式无效：{err}")),
+        },
         ("POST", "/api/scan") => json_response(&ApiResponse {
             ok: true,
             message: "扫描完成。".into(),
@@ -266,11 +274,13 @@ const APP_HTML: &str = r#"<!doctype html>
   <section class="grid">
     <div class="card">
       <h2>连接设置</h2>
-      <div class="field"><label>下载客户端</label><select id="client" onchange="updateClientHelp()"><option value="qbittorrent">qBittorrent / qBittorrent EE</option><option value="transmission">Transmission</option><option value="aria2">aria2 / Motrix</option><option value="bitcomet">BitComet / 比特彗星</option></select></div>
+      <div class="field"><label>下载客户端</label><select id="client" onchange="updateClientHelp()"><option value="qbittorrent">qBittorrent / qBittorrent EE</option><option value="transmission">Transmission</option><option value="aria2">aria2 / Motrix</option><option value="utorrent">µTorrent / BitTorrent Classic</option><option value="deluge">Deluge</option><option value="bitcomet">BitComet / 比特彗星</option></select></div>
       <p class="hint" id="clientHelp">qB 使用备用速度限制开关，适合 qBittorrent 与 qBittorrent Enhanced Edition。</p>
       <div class="field"><label>qB Web UI 地址</label><input id="qbee_url"></div>
       <div class="field"><label>Transmission RPC 地址</label><input id="transmission_url"></div>
       <div class="field"><label>aria2 JSON-RPC 地址</label><input id="aria2_url"></div>
+      <div class="field"><label>µTorrent / BitTorrent Web UI 地址</label><input id="utorrent_url"></div>
+      <div class="field"><label>Deluge Web JSON 地址</label><input id="deluge_url"></div>
       <div class="row">
         <div class="field"><label>用户名</label><input id="username"></div>
         <div class="field"><label>密码</label><input id="password" type="password"></div>
@@ -280,8 +290,8 @@ const APP_HTML: &str = r#"<!doctype html>
         <div class="field"><label>检测间隔（秒）</label><input id="interval" type="number" min="1"></div>
       </div>
       <div class="row">
-        <div class="field"><label>游戏中下载限速（KiB/s，aria2）</label><input id="download_limit" type="number" min="1"></div>
-        <div class="field"><label>游戏中上传限速（KiB/s，aria2）</label><input id="upload_limit" type="number" min="1"></div>
+        <div class="field"><label>游戏中下载限速（KiB/s）</label><input id="download_limit" type="number" min="1"></div>
+        <div class="field"><label>游戏中上传限速（KiB/s）</label><input id="upload_limit" type="number" min="1"></div>
       </div>
       <div class="field"><label>手动进程名（逗号分隔，可选）</label><input id="processes"></div>
       <div class="checks">
@@ -289,7 +299,7 @@ const APP_HTML: &str = r#"<!doctype html>
         <label class="check"><input id="autostart" type="checkbox">保存后自动启动监控</label>
       </div>
       <div class="actions">
-        <button class="btn" onclick="testConnection()">测试连接</button>
+        <button class="btn" onclick="testConnection()">测试连接</button><button class="btn" onclick="runDiagnostics()">运行自检</button>
         <button class="btn primary" onclick="saveConfig()">保存并应用</button>
         <button class="btn good" onclick="startMonitor()">启动监控</button>
         <button class="btn" onclick="stopMonitor()">停止监控</button>
@@ -325,6 +335,8 @@ function updateClientHelp(){
     qbittorrent:'qB 使用备用速度限制开关，适合 qBittorrent 与 qBittorrent Enhanced Edition。',
     transmission:'Transmission 使用 RPC 的 alt-speed-enabled 开关，需要在 Transmission 中先配置好备用限速值。',
     aria2:'aria2 / Motrix 没有备用限速开关，本工具会在游戏中临时切换全局上下行限速，退出后恢复原值。',
+    utorrent:'µTorrent / BitTorrent Classic 使用 Web UI API 临时修改全局上下行限速，退出游戏后恢复原值。',
+    deluge:'Deluge 使用 Web JSON-RPC 临时修改全局上下行限速，退出游戏后恢复原值。Deluge Web 通常只需要密码。',
     bitcomet:'BitComet / 比特彗星已加入列表，但当前缺少稳定公开的远程限速 API，本版会明确提示而不会假装自动控制。'
   };
   $('clientHelp').textContent = messages[value] || messages.qbittorrent;
@@ -336,6 +348,8 @@ function configFromForm(){
     qbee_url:$('qbee_url').value.trim(),
     transmission_url:$('transmission_url').value.trim(),
     aria2_url:$('aria2_url').value.trim(),
+    utorrent_url:$('utorrent_url').value.trim(),
+    deluge_url:$('deluge_url').value.trim(),
     username:$('username').value,
     password:$('password').value,
     aria2_secret:$('aria2_secret').value,
@@ -365,6 +379,8 @@ function fillForm(data){
   $('qbee_url').value = config.qbee_url || '';
   $('transmission_url').value = config.transmission_url || 'http://127.0.0.1:9091/transmission/rpc';
   $('aria2_url').value = config.aria2_url || 'http://127.0.0.1:6800/jsonrpc';
+  $('utorrent_url').value = config.utorrent_url || 'http://127.0.0.1:8080/gui';
+  $('deluge_url').value = config.deluge_url || 'http://127.0.0.1:8112/json';
   $('username').value = config.username || '';
   $('password').value = config.password || '';
   $('aria2_secret').value = config.aria2_secret || '';
@@ -405,6 +421,16 @@ async function testConnection(){
   setBusy('正在测试连接');
   try{ const json = await api('/api/test', configFromForm()); log(json.message); await refreshStatus(); }
   catch(e){ $('dot').className='dot bad'; log('连接失败：' + e.message); }
+}
+async function runDiagnostics(){
+  setBusy('正在运行自检');
+  try{
+    const json = await api('/api/diagnostics', configFromForm());
+    const icon = {ok:'✓', warn:'!', error:'×', info:'i'};
+    const lines = json.data.map(item => `${icon[item.level] || '-'} ${item.title}: ${item.message}`);
+    log(lines.join('\n'));
+    await refreshStatus();
+  }catch(e){ $('dot').className='dot bad'; log('自检失败：' + e.message); }
 }
 async function scanLibraries(){
   setBusy('正在扫描游戏库');
